@@ -1,0 +1,380 @@
+
+/* =========================================================
+   COURSEPILOT — DESIGN SYSTEM
+   Source of truth: app.css
+   ========================================================= */
+
+:root {
+    /* Brand */
+    --cp-primary: #3563e9;
+    --cp-primary-hover: #264dcc;
+    --cp-primary-soft: #edf2ff;
+    --cp-navy: #172b4d;
+    --cp-accent: #6c8cff;
+
+    /* Surfaces */
+    --cp-bg: #f7f9fc;
+    --cp-surface: #ffffff;
+    --cp-surface-muted: #f1f5fb;
+    --cp-border: #e3e9f2;
+
+    /* Text */
+    --cp-text: #26354d;
+    --cp-text-muted: #748198;
+    --cp-heading: #172b4d;
+    --cp-white: #ffffff;
+
+    /* Status */
+    --cp-success: #198754;
+    --cp-warning: #b7791f;
+    --cp-danger: #dc3545;
+
+    /* Typography */
+    --cp-font-family: "Inter", "Segoe UI", sans-serif;
+    --cp-font-size: 0.95rem;
+    --cp-line-height: 1.65;
+
+    /* Spacing */
+    --cp-section-space: 4rem;
+    --cp-content-width: 1200px;
+
+    /* Borders and shadows */
+    --cp-radius-sm: 8px;
+    --cp-radius-md: 14px;
+    --cp-radius-lg: 20px;
+    --cp-radius-pill: 999px;
+
+    --cp-shadow-sm: 0 2px 8px rgba(23, 43, 77, 0.04);
+    --cp-shadow-md: 0 8px 24px rgba(23, 43, 77, 0.07);
+    --cp-shadow-lg: 0 16px 40px rgba(23, 43, 77, 0.10);
+
+    /* Motion */
+    --cp-transition: 180ms ease;
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    background: var(--cp-bg);
+    color: var(--cp-text);
+    font-family: var(--cp-font-family);
+    font-size: var(--cp-font-size);
+    line-height: var(--cp-line-height);
+    -webkit-font-smoothing: antialiased;
+}
+
+main {
+    flex: 1;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--cp-heading);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+}
+
+a {
+    color: var(--cp-primary);
+    text-decoration: none;
+    transition: color var(--cp-transition);
+}
+
+a:hover {
+    color: var(--cp-primary-hover);
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+::selection {
+    background: var(--cp-primary-soft);
+    color: var(--cp-navy);
+}
+
+/* =========================================================
+   LAYOUT
+   ========================================================= */
+
+.cp-container {
+    width: min(100% - 2rem, var(--cp-content-width));
+    margin-inline: auto;
+}
+
+.cp-section {
+    padding-block: var(--cp-section-space);
+}
+
+.cp-section-sm {
+    padding-block: 2rem;
+}
+
+.cp-page-header {
+    margin-bottom: 2rem;
+}
+
+.cp-page-title {
+    margin-bottom: 0.65rem;
+    font-size: clamp(1.75rem, 3vw, 2.4rem);
+}
+
+.cp-page-description {
+    max-width: 680px;
+    margin-bottom: 0;
+    color: var(--cp-text-muted);
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+.cp-navbar {
+    background: var(--cp-surface);
+    border-bottom: 1px solid var(--cp-border);
+}
+
+.cp-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--cp-navy);
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+.cp-brand:hover {
+    color: var(--cp-primary);
+}
+
+.cp-brand-mark {
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--cp-primary);
+    color: var(--cp-white);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.cp-navbar .nav-link {
+    color: var(--cp-text-muted);
+    font-weight: 500;
+}
+
+.cp-navbar .nav-link:hover,
+.cp-navbar .nav-link.active {
+    color: var(--cp-primary);
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.btn {
+    border-radius: var(--cp-radius-sm);
+    font-weight: 600;
+    transition:
+        background-color var(--cp-transition),
+        border-color var(--cp-transition),
+        color var(--cp-transition),
+        box-shadow var(--cp-transition),
+        transform var(--cp-transition);
+}
+
+.btn-primary {
+    background: var(--cp-primary);
+    border-color: var(--cp-primary);
+}
+
+.btn-primary:hover {
+    background: var(--cp-primary-hover);
+    border-color: var(--cp-primary-hover);
+}
+
+.btn-primary:focus-visible,
+.btn-outline-primary:focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(53, 99, 233, 0.22);
+}
+
+.btn-outline-primary {
+    color: var(--cp-primary);
+    border-color: #cbd7ff;
+}
+
+.btn-outline-primary:hover {
+    background: var(--cp-primary-soft);
+    border-color: var(--cp-primary);
+    color: var(--cp-primary-hover);
+}
+
+/* =========================================================
+   CARDS AND SURFACES
+   ========================================================= */
+
+.cp-card {
+    height: 100%;
+    padding: 1.5rem;
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-md);
+    box-shadow: var(--cp-shadow-sm);
+    transition:
+        border-color var(--cp-transition),
+        box-shadow var(--cp-transition),
+        transform var(--cp-transition);
+}
+
+.cp-card-hover:hover {
+    transform: translateY(-3px);
+    border-color: #cbd7ff;
+    box-shadow: var(--cp-shadow-md);
+}
+
+.cp-card-title {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.cp-card-description {
+    margin-bottom: 0;
+    color: var(--cp-text-muted);
+}
+
+.cp-surface {
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-md);
+}
+
+.cp-muted-surface {
+    background: var(--cp-surface-muted);
+    border-radius: var(--cp-radius-md);
+}
+
+/* =========================================================
+   FORMS
+   ========================================================= */
+
+.form-label {
+    color: var(--cp-heading);
+    font-weight: 600;
+}
+
+.form-control,
+.form-select {
+    min-height: 44px;
+    border-color: var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    color: var(--cp-text);
+}
+
+textarea.form-control {
+    min-height: 130px;
+}
+
+.form-control::placeholder {
+    color: #9aa5b5;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--cp-accent);
+    box-shadow: 0 0 0 0.2rem rgba(53, 99, 233, 0.12);
+}
+
+.form-text {
+    color: var(--cp-text-muted);
+}
+
+/* =========================================================
+   BADGES AND FEEDBACK
+   ========================================================= */
+
+.cp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: var(--cp-radius-pill);
+    background: var(--cp-primary-soft);
+    color: var(--cp-primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.alert {
+    border-radius: var(--cp-radius-sm);
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.cp-footer {
+    margin-top: auto;
+    padding-block: 1.5rem;
+    background: var(--cp-surface);
+    border-top: 1px solid var(--cp-border);
+    color: var(--cp-text-muted);
+    font-size: 0.875rem;
+}
+
+.cp-footer p {
+    margin-bottom: 0;
+}
+
+/* =========================================================
+   ACCESSIBILITY AND RESPONSIVENESS
+   ========================================================= */
+
+:focus-visible {
+    outline-color: var(--cp-primary);
+    outline-offset: 3px;
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --cp-section-space: 2.75rem;
+    }
+
+    .cp-container {
+        width: min(100% - 1.25rem, var(--cp-content-width));
+    }
+
+    .cp-card {
+        padding: 1.15rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}

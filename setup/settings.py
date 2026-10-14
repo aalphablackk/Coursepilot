@@ -48,7 +48,7 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in config(
         "ALLOWED_HOSTS",
-        default="127.0.0.1,localhost",
+        default="127.0.0.1,localhost,10.179.243.27",
     ).split(",")
     if host.strip()
 ]

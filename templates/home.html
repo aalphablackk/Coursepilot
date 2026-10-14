@@ -1,0 +1,115 @@
+
+{% extends "base.html" %}
+
+{% block title %}CoursePilot — Better lessons, made simpler{% endblock %}
+
+{% block content %}
+<section class="cp-section">
+    <div class="container cp-container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <span class="cp-badge mb-3">
+                    Your AI-powered teaching assistant
+                </span>
+
+                <h1 class="display-4 fw-bold mb-4">
+                    Turn your ideas into
+                    <span class="text-primary">better lessons.</span>
+                </h1>
+
+                <p class="lead text-secondary mb-4">
+                    Transform a topic or your existing course materials into
+                    structured, editable lesson notes designed around your
+                    learners and teaching time.
+                </p>
+
+                <a href="#getting-started" class="btn btn-primary btn-lg px-4">
+                    Explore CoursePilot
+                </a>
+
+                <p class="small text-secondary mt-3 mb-0">
+                    Your materials. Your teaching style. More time to teach.
+                </p>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="cp-card p-4">
+                    <span class="cp-badge mb-3">A simpler workflow</span>
+
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="cp-brand-mark flex-shrink-0">1</div>
+                        <div>
+                            <h2 class="h6 mb-1">Start with your material</h2>
+                            <p class="text-secondary small mb-0">
+                                Enter a topic or provide your own notes.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="cp-brand-mark flex-shrink-0">2</div>
+                        <div>
+                            <h2 class="h6 mb-1">Shape your lesson</h2>
+                            <p class="text-secondary small mb-0">
+                                Choose the learner level and teaching depth.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <div class="cp-brand-mark flex-shrink-0">3</div>
+                        <div>
+                            <h2 class="h6 mb-1">Review and refine</h2>
+                            <p class="text-secondary small mb-0">
+                                Edit your notes before using or exporting them.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="pb-5" id="getting-started">
+    <div class="container cp-container">
+        <div class="cp-page-header text-center mx-auto">
+            <h2 class="h2 mb-3">What would you like to create?</h2>
+            <p class="cp-page-description mx-auto">
+                Start with the teaching material you already have, or build
+                something new from a topic.
+            </p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="cp-card cp-card-hover">
+                    <span class="cp-badge mb-3">Start fresh</span>
+                    <h3 class="cp-card-title">Create a lesson</h3>
+                    <p class="cp-card-description mb-4">
+                        Turn a topic into a structured lesson with objectives,
+                        explanations, examples, and activities.
+                    </p>
+                    <button class="btn btn-outline-primary" disabled>
+                        Coming next phase
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="cp-card cp-card-hover">
+                    <span class="cp-badge mb-3">Use your material</span>
+                    <h3 class="cp-card-title">Work with your notes</h3>
+                    <p class="cp-card-description mb-4">
+                        Organize, simplify, or expand existing teaching
+                        materials into clearer learning content.
+                    </p>
+                    <button class="btn btn-outline-primary" disabled>
+                        Coming next phase
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
