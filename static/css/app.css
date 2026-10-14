@@ -378,3 +378,18 @@ textarea.form-control {
         animation-iteration-count: 1 !important;
     }
 }
+
+/* Creation mode cards */
+#creation-modes .cp-card {
+    display: flex;
+    flex-direction: column;
+}
+
+#creation-modes .cp-card .cp-card-description {
+    flex-grow: 1;
+}
+
+#creation-modes .cp-card .btn {
+    margin-top: auto;
+}
+

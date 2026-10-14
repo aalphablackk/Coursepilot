@@ -1,47 +1,63 @@
 
 {% extends "base.html" %}
 
-{% block title %}CoursePilot — Better lessons, made simpler{% endblock %}
+{% block title %}CoursePilot — Plan less. Teach better.{% endblock %}
 
 {% block content %}
+
+<!-- HERO -->
 <section class="cp-section">
     <div class="container cp-container">
         <div class="row align-items-center g-5">
             <div class="col-lg-7">
                 <span class="cp-badge mb-3">
-                    Your AI-powered teaching assistant
+                    Your teaching preparation companion
                 </span>
 
                 <h1 class="display-4 fw-bold mb-4">
-                    Turn your ideas into
-                    <span class="text-primary">better lessons.</span>
+                    Great lessons start with
+                    <span class="text-primary">clear ideas.</span>
                 </h1>
 
                 <p class="lead text-secondary mb-4">
-                    Transform a topic or your existing course materials into
-                    structured, editable lesson notes designed around your
+                    Turn topics, personal notes, and course materials into
+                    structured, editable learning content tailored to your
                     learners and teaching time.
                 </p>
 
-                <a href="#getting-started" class="btn btn-primary btn-lg px-4">
-                    Explore CoursePilot
-                </a>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="#creation-modes"
+                       class="btn btn-primary btn-lg px-4">
+                        Explore what you can create
+                    </a>
 
-                <p class="small text-secondary mt-3 mb-0">
-                    Your materials. Your teaching style. More time to teach.
-                </p>
+                    <a href="#how-it-works"
+                       class="btn btn-outline-primary btn-lg px-4">
+                        How it works
+                    </a>
+                </div>
+
+                <div class="d-flex flex-wrap gap-3 mt-4 small text-secondary">
+                    <span><i class="bi bi-check2-circle me-1"></i>Editable notes</span>
+                    <span><i class="bi bi-check2-circle me-1"></i>Flexible lesson depth</span>
+                    <span><i class="bi bi-check2-circle me-1"></i>Instructor control</span>
+                </div>
             </div>
 
             <div class="col-lg-5">
-                <div class="cp-card p-4">
-                    <span class="cp-badge mb-3">A simpler workflow</span>
+                <div class="cp-card p-4 p-md-5">
+                    <span class="cp-badge mb-3">From idea to classroom</span>
+
+                    <h2 class="h4 mb-4">
+                        Your preparation, organized.
+                    </h2>
 
                     <div class="d-flex gap-3 mb-4">
                         <div class="cp-brand-mark flex-shrink-0">1</div>
                         <div>
-                            <h2 class="h6 mb-1">Start with your material</h2>
-                            <p class="text-secondary small mb-0">
-                                Enter a topic or provide your own notes.
+                            <h3 class="h6 mb-1">Bring your starting point</h3>
+                            <p class="small text-secondary mb-0">
+                                Begin with a topic or material you already have.
                             </p>
                         </div>
                     </div>
@@ -49,9 +65,10 @@
                     <div class="d-flex gap-3 mb-4">
                         <div class="cp-brand-mark flex-shrink-0">2</div>
                         <div>
-                            <h2 class="h6 mb-1">Shape your lesson</h2>
-                            <p class="text-secondary small mb-0">
-                                Choose the learner level and teaching depth.
+                            <h3 class="h6 mb-1">Shape the learning experience</h3>
+                            <p class="small text-secondary mb-0">
+                                Set the learner level, class duration, and
+                                desired depth.
                             </p>
                         </div>
                     </div>
@@ -59,9 +76,171 @@
                     <div class="d-flex gap-3">
                         <div class="cp-brand-mark flex-shrink-0">3</div>
                         <div>
-                            <h2 class="h6 mb-1">Review and refine</h2>
-                            <p class="text-secondary small mb-0">
-                                Edit your notes before using or exporting them.
+                            <h3 class="h6 mb-1">Review and make it yours</h3>
+                            <p class="small text-secondary mb-0">
+                                Refine the content before teaching or exporting it.
+                            </p>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-secondary">Designed for educators</span>
+                        <span class="cp-badge">You stay in control</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CREATION MODES -->
+<section class="cp-section-sm" id="creation-modes">
+    <div class="container cp-container">
+        <div class="cp-page-header text-center mx-auto">
+            <span class="cp-badge mb-3">One workspace, different needs</span>
+
+            <h2 class="h2 mb-3">What would you like to create?</h2>
+
+            <p class="cp-page-description mx-auto">
+                Choose a starting point that matches the work in front of you.
+                CoursePilot helps you organize the content around your teaching goals.
+            </p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <article class="cp-card cp-card-hover">
+                    <span class="cp-badge mb-3">01 · Start fresh</span>
+
+                    <h3 class="cp-card-title">Quick Lesson</h3>
+
+                    <p class="cp-card-description mb-4">
+                        Build a focused, instructor-ready lesson from a topic,
+                        class duration, and learner level.
+                    </p>
+
+                    <a href="#getting-started"
+                       class="btn btn-outline-primary w-100">
+                        Explore option
+                    </a>
+                </article>
+            </div>
+
+            
+            <div class="col-md-6 col-lg-3">
+                <article class="cp-card cp-card-hover">
+                    <span class="cp-badge mb-3">02 · Explain clearly</span>
+
+                    <h3 class="cp-card-title">Summaries &amp; Presentations</h3>
+
+                    <p class="cp-card-description mb-4">
+                        Create structured summaries, presentation slides, concise
+                        bullet points, and speaker notes from a topic or study material.
+                    </p>
+
+                    <a href="#getting-started"
+                    class="btn btn-outline-primary w-100">
+                        Explore option
+                    </a>
+                </article>
+            </div>
+
+
+            <div class="col-md-6 col-lg-3">
+                <article class="cp-card cp-card-hover">
+                    <span class="cp-badge mb-3">03 · Use your material</span>
+
+                    <h3 class="cp-card-title">Custom Content</h3>
+
+                    <p class="cp-card-description mb-4">
+                        Work from your own write-up or notes to organize,
+                        simplify, expand, or clarify the material.
+                    </p>
+
+                    <a href="#getting-started"
+                       class="btn btn-outline-primary w-100">
+                        Explore option
+                    </a>
+                </article>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <article class="cp-card cp-card-hover">
+                    <span class="cp-badge mb-3">04 · Plan ahead</span>
+
+                    <h3 class="cp-card-title">Full Course</h3>
+
+                    <p class="cp-card-description mb-4">
+                        Structure a subject into weeks and sessions, with
+                        an outline you can review before generating lessons.
+                    </p>
+
+                    <a href="#getting-started"
+                       class="btn btn-outline-primary w-100">
+                        Explore option
+                    </a>
+                </article>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="cp-section" id="how-it-works">
+    <div class="container cp-container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <span class="cp-badge mb-3">A practical workflow</span>
+
+                <h2 class="display-6 fw-bold mb-3">
+                    Less time organizing.
+                    <span class="text-primary">More time teaching.</span>
+                </h2>
+
+                <p class="text-secondary mb-0">
+                    CoursePilot is designed to support your preparation,
+                    not replace your teaching judgment. Start with what you
+                    know, review the result, and refine it for your classroom.
+                </p>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="cp-card mb-3">
+                    <div class="d-flex gap-3">
+                        <div class="cp-brand-mark flex-shrink-0">1</div>
+                        <div>
+                            <h3 class="h5 mb-2">Choose your inputs</h3>
+                            <p class="text-secondary mb-0">
+                                Supply a topic or your own learning material,
+                                then define your teaching requirements.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cp-card mb-3">
+                    <div class="d-flex gap-3">
+                        <div class="cp-brand-mark flex-shrink-0">2</div>
+                        <div>
+                            <h3 class="h5 mb-2">Generate structured content</h3>
+                            <p class="text-secondary mb-0">
+                                Develop explanations, examples, objectives,
+                                activities, and notes suited to the selected task.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cp-card">
+                    <div class="d-flex gap-3">
+                        <div class="cp-brand-mark flex-shrink-0">3</div>
+                        <div>
+                            <h3 class="h5 mb-2">Review, edit, and export</h3>
+                            <p class="text-secondary mb-0">
+                                Check the material, improve individual sections,
+                                and prepare it for teaching or revision.
                             </p>
                         </div>
                     </div>
@@ -71,45 +250,75 @@
     </div>
 </section>
 
-<section class="pb-5" id="getting-started">
+<!-- KEY BENEFITS -->
+<section class="cp-section-sm">
     <div class="container cp-container">
         <div class="cp-page-header text-center mx-auto">
-            <h2 class="h2 mb-3">What would you like to create?</h2>
+            <h2 class="h2 mb-3">Built around the way you teach</h2>
+
             <p class="cp-page-description mx-auto">
-                Start with the teaching material you already have, or build
-                something new from a topic.
+                Useful structure without taking control away from the instructor.
             </p>
         </div>
 
         <div class="row g-4">
-            <div class="col-md-6">
-                <div class="cp-card cp-card-hover">
-                    <span class="cp-badge mb-3">Start fresh</span>
-                    <h3 class="cp-card-title">Create a lesson</h3>
-                    <p class="cp-card-description mb-4">
-                        Turn a topic into a structured lesson with objectives,
-                        explanations, examples, and activities.
+            <div class="col-md-6 col-lg-4">
+                <div class="cp-card">
+                    <h3 class="cp-card-title">Adapt to your learners</h3>
+                    <p class="cp-card-description">
+                        Shape explanations and examples around beginner,
+                        intermediate, or advanced learners.
                     </p>
-                    <button class="btn btn-outline-primary" disabled>
-                        Coming next phase
-                    </button>
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <div class="cp-card cp-card-hover">
-                    <span class="cp-badge mb-3">Use your material</span>
-                    <h3 class="cp-card-title">Work with your notes</h3>
-                    <p class="cp-card-description mb-4">
-                        Organize, simplify, or expand existing teaching
-                        materials into clearer learning content.
+            <div class="col-md-6 col-lg-4">
+                <div class="cp-card">
+                    <h3 class="cp-card-title">Choose your level of detail</h3>
+                    <p class="cp-card-description">
+                        Work toward concise, standard, or detailed notes
+                        depending on the teaching task.
                     </p>
-                    <button class="btn btn-outline-primary" disabled>
-                        Coming next phase
-                    </button>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="cp-card">
+                    <h3 class="cp-card-title">Stay in control</h3>
+                    <p class="cp-card-description">
+                        Review and edit generated material. AI output is a
+                        starting point that still needs your judgment.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<!-- FINAL CTA -->
+<section class="cp-section" id="getting-started">
+    <div class="container cp-container">
+        <div class="cp-card text-center p-4 p-md-5">
+            <span class="cp-badge mb-3">A better starting point</span>
+
+            <h2 class="display-6 fw-bold mb-3">
+                Your next lesson starts here.
+            </h2>
+
+            <p class="cp-page-description mx-auto mb-4">
+                Bring your topic, your notes, or your next course idea.
+                We'll help you turn it into structured learning content.
+            </p>
+
+            <button class="btn btn-primary btn-lg px-4" disabled>
+                Lesson creation coming next
+            </button>
+
+            <p class="small text-secondary mt-3 mb-0">
+                Generation workflows are still being built.
+            </p>
+        </div>
+    </div>
+</section>
+
 {% endblock %}
