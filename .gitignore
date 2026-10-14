@@ -1,0 +1,23 @@
+documentation.md
+CoursePilot_Clickable_Progress_Tracker.html
+.env
+course_pilotv1.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.env
+
+# Django
+staticfiles/
+media/
+*.log
+db.sqlite3
+
+# IDE
+.vscode/
+.idea/
