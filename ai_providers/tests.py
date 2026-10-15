@@ -1,0 +1,327 @@
+
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+from django.test import SimpleTestCase, override_settings
+
+from ai_providers.exceptions import (
+    AIProviderNotConfiguredError,
+    AIProviderResponseError,
+    AIProviderUnavailableError,
+)
+from ai_providers.factory import get_ai_provider
+from ai_providers.exceptions import AIProviderError
+from ai_providers.gemini import GeminiProvider
+from ai_providers.openai import OpenAIProvider
+from ai_providers.research import WebResearchService
+
+@override_settings(
+    GEMINI_API_KEY="test-key",
+    GEMINI_MODEL="primary-model",
+    GEMINI_FALLBACK_MODEL="fallback-model",
+)
+class GeminiProviderTests(SimpleTestCase):
+    @patch("ai_providers.gemini.genai.Client")
+    def test_primary_model_success(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.models.generate_content.return_value = SimpleNamespace(
+            text="Generated lesson"
+        )
+
+        provider = GeminiProvider()
+        result = provider.generate_text("Explain Python")
+
+        self.assertEqual(result, "Generated lesson")
+        mock_client.models.generate_content.assert_called_once()
+        self.assertEqual(
+            mock_client.models.generate_content.call_args.kwargs["model"],
+            "primary-model",
+        )
+
+    @patch("ai_providers.gemini.genai.Client")
+    def test_fallback_model_used_when_primary_fails(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.models.generate_content.side_effect = [
+            RuntimeError("Primary unavailable"),
+            SimpleNamespace(text="Fallback lesson"),
+        ]
+
+        provider = GeminiProvider()
+        result = provider.generate_text("Explain Python")
+
+        self.assertEqual(result, "Fallback lesson")
+        self.assertEqual(
+            [
+                call.kwargs["model"]
+                for call in mock_client.models.generate_content.call_args_list
+            ],
+            ["primary-model", "fallback-model"],
+        )
+
+    @patch("ai_providers.gemini.genai.Client")
+    def test_error_when_both_models_fail(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.models.generate_content.side_effect = RuntimeError(
+            "Provider unavailable"
+        )
+
+        provider = GeminiProvider()
+
+        with self.assertRaises(AIProviderUnavailableError):
+            provider.generate_text("Explain Python")
+
+        self.assertEqual(
+            mock_client.models.generate_content.call_count,
+            2,
+        )
+
+    @override_settings(GEMINI_FALLBACK_MODEL="")
+    @patch("ai_providers.gemini.genai.Client")
+    def test_no_fallback_when_not_configured(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.models.generate_content.side_effect = RuntimeError(
+            "Primary unavailable"
+        )
+
+        provider = GeminiProvider()
+
+        with self.assertRaises(AIProviderUnavailableError):
+            provider.generate_text("Explain Python")
+
+        mock_client.models.generate_content.assert_called_once()
+
+    @override_settings(GEMINI_API_KEY="")
+    def test_missing_api_key_raises_configuration_error(self):
+        with self.assertRaises(AIProviderNotConfiguredError):
+            GeminiProvider()
+
+@override_settings(
+    OPENAI_API_KEY="test-key",
+    OPENAI_MODEL="test-model",
+)
+class OpenAIProviderTests(SimpleTestCase):
+    @patch("ai_providers.openai.OpenAI")
+    def test_successful_generation(self, mock_openai_class):
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+        mock_client.responses.create.return_value = SimpleNamespace(
+            output_text="Generated lesson"
+        )
+
+        provider = OpenAIProvider()
+        result = provider.generate_text(
+            "Explain Python",
+            system_instruction="You are a helpful instructor.",
+        )
+
+        self.assertEqual(result, "Generated lesson")
+        mock_client.responses.create.assert_called_once()
+
+        call_kwargs = mock_client.responses.create.call_args.kwargs
+        self.assertEqual(call_kwargs["model"], "test-model")
+        self.assertEqual(
+            call_kwargs["max_output_tokens"],
+            8192,
+        )
+        self.assertEqual(
+            call_kwargs["input"][0]["role"],
+            "system",
+        )
+
+    @patch("ai_providers.openai.OpenAI")
+    def test_api_error_is_wrapped(self, mock_openai_class):
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+        mock_client.responses.create.side_effect = RuntimeError(
+            "Simulated API failure"
+        )
+
+        provider = OpenAIProvider()
+
+        with self.assertRaises(AIProviderUnavailableError):
+            provider.generate_text("Explain Python")
+
+    @patch("ai_providers.openai.OpenAI")
+    def test_empty_prompt_is_rejected(self, mock_openai_class):
+        provider = OpenAIProvider()
+
+        with self.assertRaises(AIProviderResponseError):
+            provider.generate_text("   ")
+
+        mock_openai_class.assert_called_once()
+
+    @patch("ai_providers.openai.OpenAI")
+    def test_empty_response_is_rejected(self, mock_openai_class):
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+        mock_client.responses.create.return_value = SimpleNamespace(
+            output_text="   "
+        )
+
+        provider = OpenAIProvider()
+
+        with self.assertRaises(AIProviderResponseError):
+            provider.generate_text("Explain Python")
+
+    @override_settings(OPENAI_API_KEY="")
+    def test_missing_api_key_is_rejected(self):
+        with self.assertRaises(AIProviderNotConfiguredError):
+            OpenAIProvider()
+
+
+@override_settings(AI_PROVIDER="gemini")
+class AIProviderFactoryTests(SimpleTestCase):
+    @patch.dict(
+        "ai_providers.factory.PROVIDER_CLASSES",
+        {"gemini": MagicMock(name="GeminiProvider")},
+    )
+    def test_selects_default_gemini_provider(self):
+        from ai_providers.factory import PROVIDER_CLASSES
+
+        provider_class = PROVIDER_CLASSES["gemini"]
+        provider = get_ai_provider()
+
+        provider_class.assert_called_once_with()
+        self.assertEqual(provider, provider_class.return_value)
+    
+    def test_empty_provider_name_is_rejected(self):
+        with self.assertRaises(AIProviderError):
+            get_ai_provider("")
+
+    def test_whitespace_provider_name_is_rejected(self):
+        with self.assertRaises(AIProviderError):
+            get_ai_provider("   ")
+
+    @override_settings(AI_PROVIDER=None)
+    def test_non_string_default_is_rejected(self):
+        with self.assertRaises(AIProviderError):
+            get_ai_provider()
+
+    @patch.dict(
+        "ai_providers.factory.PROVIDER_CLASSES",
+        {"openai": MagicMock(name="OpenAIProvider")},
+    )
+    def test_selects_explicit_openai_provider(self):
+        from ai_providers.factory import PROVIDER_CLASSES
+
+        provider_class = PROVIDER_CLASSES["openai"]
+        provider = get_ai_provider("openai")
+
+        provider_class.assert_called_once_with()
+        self.assertEqual(provider, provider_class.return_value)
+
+    def test_unsupported_provider_is_rejected(self):
+        with self.assertRaises(AIProviderError):
+            get_ai_provider("unsupported")
+
+    @override_settings(AI_PROVIDER="invalid")
+    def test_invalid_default_provider_is_rejected(self):
+        with self.assertRaises(AIProviderError):
+            get_ai_provider()
+
+
+
+
+@override_settings(TAVILY_API_KEY="test-tavily-key")
+class WebResearchServiceTests(SimpleTestCase):
+    @patch("ai_providers.research.TavilyClient")
+    def test_successful_search_returns_normalized_sources(
+        self, mock_client_class
+    ):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {
+            "results": [
+                {
+                    "title": "Python Documentation",
+                    "url": "https://docs.python.org/3/",
+                    "content": "Python is a programming language.",
+                    "score": 0.95,
+                }
+            ]
+        }
+
+        service = WebResearchService()
+        results = service.search("Introduction to Python")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["title"], "Python Documentation")
+        self.assertEqual(
+            results[0]["url"],
+            "https://docs.python.org/3/",
+        )
+        self.assertEqual(
+            results[0]["content"],
+            "Python is a programming language.",
+        )
+        mock_client.search.assert_called_once()
+
+    @override_settings(TAVILY_API_KEY="")
+    def test_missing_api_key_is_rejected(self):
+        with self.assertRaises(AIProviderNotConfiguredError):
+            WebResearchService()
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_empty_query_is_rejected(self, mock_client_class):
+        service = WebResearchService()
+
+        with self.assertRaises(AIProviderResponseError):
+            service.search("   ")
+
+        mock_client_class.return_value.search.assert_not_called()
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_invalid_result_limit_is_rejected(self, mock_client_class):
+        service = WebResearchService()
+
+        with self.assertRaises(AIProviderResponseError):
+            service.search("Python", max_results=20)
+
+        mock_client_class.return_value.search.assert_not_called()
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_search_failure_is_wrapped(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.side_effect = RuntimeError(
+            "Simulated Tavily failure"
+        )
+
+        service = WebResearchService()
+
+        with self.assertRaises(AIProviderUnavailableError):
+            service.search("Python")
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_invalid_sources_are_excluded(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {
+            "results": [
+                {
+                    "title": "Invalid URL",
+                    "url": "javascript:alert(1)",
+                    "content": "Should be excluded.",
+                },
+                {
+                    "title": "Missing content",
+                    "url": "https://example.com/",
+                    "content": "   ",
+                },
+                {
+                    "title": "Valid source",
+                    "url": "https://example.com/python",
+                    "content": "Useful source content.",
+                },
+            ]
+        }
+
+        service = WebResearchService()
+        results = service.search("Python")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["title"], "Valid source")

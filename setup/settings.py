@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     "cloudinary_storage",
 
     "core",
+    "ai_providers"
 ]
 
 MIDDLEWARE = [
@@ -255,3 +256,22 @@ if not DEBUG:
     X_FRAME_OPTIONS = "DENY"
 
 # AUTH_USER_MODEL = "accounts.User"
+
+TAVILY_API_KEY = config("TAVILY_API_KEY", default="")
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
+
+GEMINI_MODEL = config(
+    "GEMINI_MODEL",
+    default="gemini-3.8-flash",
+)
+
+GEMINI_FALLBACK_MODEL = config(
+    "GEMINI_FALLBACK_MODEL",
+    default="",
+)
+OPENAI_MODEL = config(
+    "OPENAI_MODEL",
+    default="gpt-4.1-mini",
+)
+AI_PROVIDER = config("AI_PROVIDER", default="gemini").strip().lower()
