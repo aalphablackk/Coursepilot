@@ -1,13 +1,15 @@
 
 from typing import Any
+from urllib.parse import urlparse
 
 from django.conf import settings
 from tavily import TavilyClient
 
 from .exceptions import (
     AIProviderNotConfiguredError,
-    AIProviderUnavailableError,
     AIProviderResponseError,
+    AIProviderTemporaryError,
+    AIProviderUnavailableError,
 )
 
 
@@ -24,21 +26,39 @@ class WebResearchService:
 
         self.client = TavilyClient(api_key=api_key)
 
+    @staticmethod
+    def _is_valid_http_url(url: Any) -> bool:
+        """Accept only absolute HTTP(S) URLs with a hostname."""
+        if not isinstance(url, str) or not url.strip():
+            return False
+
+        try:
+            parsed = urlparse(url.strip())
+            return (
+                parsed.scheme.lower() in {"http", "https"}
+                and bool(parsed.hostname)
+                and not any(char.isspace() for char in url)
+            )
+        except (ValueError, TypeError):
+            return False
+
     def search(
         self,
         query: str,
         *,
         max_results: int = 5,
     ) -> list[dict[str, Any]]:
-        """Return normalized web search results with source URLs."""
-        if not query or not query.strip():
-            raise AIProviderResponseError(
-                "A search query is required."
-            )
+        """Return normalized search results with source URLs."""
+        if not isinstance(query, str) or not query.strip():
+            raise AIProviderResponseError("A search query is required.")
 
-        if not 1 <= max_results <= 10:
+        if (
+            not isinstance(max_results, int)
+            or isinstance(max_results, bool)
+            or not 1 <= max_results <= 10
+        ):
             raise AIProviderResponseError(
-                "max_results must be between 1 and 10."
+                "max_results must be an integer between 1 and 10."
             )
 
         try:
@@ -48,9 +68,15 @@ class WebResearchService:
                 search_depth="basic",
             )
         except Exception as exc:
+            # Do not expose provider details or credentials to users.
             raise AIProviderUnavailableError(
                 "Web research failed. Please try again."
             ) from exc
+
+        if not isinstance(response, dict):
+            raise AIProviderResponseError(
+                "The research service returned an invalid response."
+            )
 
         results = response.get("results", [])
 
@@ -68,19 +94,20 @@ class WebResearchService:
             url = item.get("url")
             content = item.get("content")
 
-            if not isinstance(url, str) or not url.startswith(
-                ("https://", "http://")
-            ):
+            if not self._is_valid_http_url(url):
                 continue
 
             if not isinstance(content, str) or not content.strip():
                 continue
 
+            title = item.get("title")
+            score = item.get("score")
+
             normalized_results.append({
-                "title": str(item.get("title") or "Untitled source"),
-                "url": url,
+                "title": title.strip() if isinstance(title, str) and title.strip() else "Untitled source",
+                "url": url.strip(),
                 "content": content.strip(),
-                "score": item.get("score"),
+                "score": score if isinstance(score, (int, float)) and not isinstance(score, bool) else None,
             })
 
         return normalized_results

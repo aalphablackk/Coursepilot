@@ -2,6 +2,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from .schemas import AIResponse
+
 
 class BaseAIProvider(ABC):
     """Common interface implemented by every AI generation provider."""
@@ -17,11 +19,6 @@ class BaseAIProvider(ABC):
         temperature: float = 0.7,
         max_output_tokens: int = 8192,
         **kwargs: Any,
-    ) -> str:
-        """
-        Generate text using the configured provider.
-
-        Implementations must return non-empty text or raise a
-        documented AIProviderError subclass.
-        """
+    ) -> AIResponse:
+        """Generate text and return a normalized response."""
         raise NotImplementedError

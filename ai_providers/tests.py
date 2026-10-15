@@ -14,6 +14,16 @@ from ai_providers.exceptions import AIProviderError
 from ai_providers.gemini import GeminiProvider
 from ai_providers.openai import OpenAIProvider
 from ai_providers.research import WebResearchService
+import openai
+
+from ai_providers.exceptions import (
+    AIProviderAuthenticationError,
+    AIProviderQuotaExceededError,
+    AIProviderRateLimitError,
+    AIProviderTemporaryError,
+    AIProviderAuthenticationError,
+    AIProviderQuotaExceededError,
+)
 
 @override_settings(
     GEMINI_API_KEY="test-key",
@@ -26,18 +36,66 @@ class GeminiProviderTests(SimpleTestCase):
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         mock_client.models.generate_content.return_value = SimpleNamespace(
-            text="Generated lesson"
+            text="Generated lesson",
+            usage_metadata=SimpleNamespace(
+                prompt_token_count=120,
+                candidates_token_count=80,
+                total_token_count=200,
+            ),
+            candidates=[
+                SimpleNamespace(finish_reason=SimpleNamespace(name="STOP"))
+            ],
         )
 
         provider = GeminiProvider()
         result = provider.generate_text("Explain Python")
 
-        self.assertEqual(result, "Generated lesson")
+        self.assertEqual(result.content, "Generated lesson")
+        self.assertEqual(result.provider, "gemini")
+        self.assertEqual(result.model, "primary-model")
         mock_client.models.generate_content.assert_called_once()
         self.assertEqual(
             mock_client.models.generate_content.call_args.kwargs["model"],
             "primary-model",
         )
+        self.assertEqual(result.usage.input_tokens, 120)
+        self.assertEqual(result.usage.output_tokens, 80)
+        self.assertEqual(result.usage.total_tokens, 200)
+        self.assertEqual(result.finish_reason, "STOP")
+
+    @patch("ai_providers.gemini.genai.Client")
+    def test_authentication_error_does_not_trigger_fallback(
+        self, mock_client_class
+    ):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        error = AIProviderAuthenticationError("Invalid credentials")
+        mock_client.models.generate_content.side_effect = error
+
+        provider = GeminiProvider()
+
+        with self.assertRaises(AIProviderAuthenticationError):
+            provider.generate_text("Explain Python")
+
+        mock_client.models.generate_content.assert_called_once()
+
+    @patch("ai_providers.gemini.genai.Client")
+    def test_quota_error_does_not_trigger_fallback(
+        self, mock_client_class
+    ):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        error = AIProviderQuotaExceededError("Quota exhausted")
+        mock_client.models.generate_content.side_effect = error
+
+        provider = GeminiProvider()
+
+        with self.assertRaises(AIProviderQuotaExceededError):
+            provider.generate_text("Explain Python")
+
+        mock_client.models.generate_content.assert_called_once()
 
     @patch("ai_providers.gemini.genai.Client")
     def test_fallback_model_used_when_primary_fails(self, mock_client_class):
@@ -51,7 +109,9 @@ class GeminiProviderTests(SimpleTestCase):
         provider = GeminiProvider()
         result = provider.generate_text("Explain Python")
 
-        self.assertEqual(result, "Fallback lesson")
+        self.assertEqual(result.content, "Fallback lesson")
+        self.assertEqual(result.provider, "gemini")
+        self.assertEqual(result.model, "fallback-model")
         self.assertEqual(
             [
                 call.kwargs["model"]
@@ -109,7 +169,15 @@ class OpenAIProviderTests(SimpleTestCase):
         mock_client = MagicMock()
         mock_openai_class.return_value = mock_client
         mock_client.responses.create.return_value = SimpleNamespace(
-            output_text="Generated lesson"
+            output_text="Generated lesson",
+            model="test-model",
+            status="completed",
+            _request_id="req_test123",
+            usage=SimpleNamespace(
+                input_tokens=120,
+                output_tokens=80,
+                total_tokens=200,
+            ),
         )
 
         provider = OpenAIProvider()
@@ -118,10 +186,13 @@ class OpenAIProviderTests(SimpleTestCase):
             system_instruction="You are a helpful instructor.",
         )
 
-        self.assertEqual(result, "Generated lesson")
+        self.assertEqual(result.content, "Generated lesson")
+        self.assertEqual(result.provider, "openai")
+        self.assertEqual(result.model, "test-model")
         mock_client.responses.create.assert_called_once()
 
         call_kwargs = mock_client.responses.create.call_args.kwargs
+        self.assertIsNotNone(result.usage)
         self.assertEqual(call_kwargs["model"], "test-model")
         self.assertEqual(
             call_kwargs["max_output_tokens"],
@@ -131,6 +202,11 @@ class OpenAIProviderTests(SimpleTestCase):
             call_kwargs["input"][0]["role"],
             "system",
         )
+        self.assertEqual(result.usage.input_tokens, 120)
+        self.assertEqual(result.usage.output_tokens, 80)
+        self.assertEqual(result.usage.total_tokens, 200)
+        self.assertEqual(result.finish_reason, "completed")
+        self.assertEqual(result.request_id, "req_test123")
 
     @patch("ai_providers.openai.OpenAI")
     def test_api_error_is_wrapped(self, mock_openai_class):
@@ -167,6 +243,56 @@ class OpenAIProviderTests(SimpleTestCase):
         with self.assertRaises(AIProviderResponseError):
             provider.generate_text("Explain Python")
 
+    @patch("ai_providers.openai.OpenAI")
+    def test_authentication_error_is_classified(self, mock_openai_class):
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+        mock_client.responses.create.side_effect = openai.AuthenticationError(
+            message="Invalid API key",
+            response=MagicMock(status_code=401, headers={}),
+            body={"error": {"message": "Invalid API key"}},
+        )
+
+        provider = OpenAIProvider()
+
+        with self.assertRaises(AIProviderAuthenticationError):
+            provider.generate_text("Explain Python")
+
+    @patch("ai_providers.openai.OpenAI")
+    def test_rate_limit_error_is_classified(self, mock_openai_class):
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+        mock_client.responses.create.side_effect = openai.RateLimitError(
+            message="Too many requests",
+            response=MagicMock(status_code=429, headers={}),
+            body={"error": {"message": "Too many requests", "code": "rate_limit_exceeded"}},
+        )
+
+        provider = OpenAIProvider()
+
+        with self.assertRaises(AIProviderRateLimitError):
+            provider.generate_text("Explain Python")
+
+    @patch("ai_providers.openai.OpenAI")
+    def test_quota_error_is_classified(self, mock_openai_class):
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+        mock_client.responses.create.side_effect = openai.RateLimitError(
+            message="Quota exceeded",
+            response=MagicMock(status_code=429, headers={}),
+            body={
+                "error": {
+                    "message": "Quota exceeded",
+                    "code": "insufficient_quota",
+                }
+            },
+        )
+
+        provider = OpenAIProvider()
+
+        with self.assertRaises(AIProviderQuotaExceededError):
+            provider.generate_text("Explain Python")
+
     @override_settings(OPENAI_API_KEY="")
     def test_missing_api_key_is_rejected(self):
         with self.assertRaises(AIProviderNotConfiguredError):
@@ -187,7 +313,7 @@ class AIProviderFactoryTests(SimpleTestCase):
 
         provider_class.assert_called_once_with()
         self.assertEqual(provider, provider_class.return_value)
-    
+
     def test_empty_provider_name_is_rejected(self):
         with self.assertRaises(AIProviderError):
             get_ai_provider("")
@@ -228,6 +354,48 @@ class AIProviderFactoryTests(SimpleTestCase):
 
 @override_settings(TAVILY_API_KEY="test-tavily-key")
 class WebResearchServiceTests(SimpleTestCase):
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_malformed_response_is_rejected(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {"results": "invalid"}
+
+        service = WebResearchService()
+
+        with self.assertRaises(AIProviderResponseError):
+            service.search("Python")
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_malformed_http_urls_are_excluded(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {
+            "results": [
+                {
+                    "title": "Malformed URL",
+                    "url": "https://",
+                    "content": "Should be excluded.",
+                },
+                {
+                    "title": "Whitespace URL",
+                    "url": "https://exa mple.com",
+                    "content": "Should also be excluded.",
+                },
+                {
+                    "title": "Valid source",
+                    "url": "https://example.com/python",
+                    "content": "Useful source content.",
+                },
+            ]
+        }
+
+        service = WebResearchService()
+        results = service.search("Python")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["title"], "Valid source")
+
     @patch("ai_providers.research.TavilyClient")
     def test_successful_search_returns_normalized_sources(
         self, mock_client_class
