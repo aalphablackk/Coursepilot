@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4 py-lg-5">
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+
+        {% if lesson.course and lesson.outline_item %}
+            <a href="{% url 'core:course_outline' course_id=lesson.course.id %}"
+               class="btn btn-outline-secondary btn-sm">
+                &larr; Back to course outline
+            </a>
+        {% else %}
+            <a href="{% url 'core:library' %}"
+               class="btn btn-outline-secondary btn-sm">
+                &larr; Back to My Library
+            </a>
+        {% endif %}
+
+        <a href="{% url 'core:generate' %}"
+           class="btn btn-outline-secondary btn-sm">
+            Lesson generator
+        </a>
+
+    </div>
+
+    {% include "core/lessons/lesson_header.html" %}
+
+    {% if lesson.generation_status == "pending" or lesson.generation_status == "generating" %}
+
+        <div class="alert alert-info mt-4" role="status">
+            <div class="d-flex align-items-center gap-3">
+                <div class="spinner-border spinner-border-sm"
+                     aria-hidden="true"></div>
+
+                <div>
+                    <strong>Your lesson is being prepared.</strong>
+                    <p class="small mb-0 mt-1">
+                        Refresh this page to check its status.
+                    </p>
+
+                    {% if lesson.generation_stage %}
+                        <p class="small mb-0 mt-1">
+                            {{ lesson.generation_stage }}
+                        </p>
+                    {% endif %}
+
+                    {% if lesson.generation_progress %}
+                        <div class="progress mt-2"
+                             role="progressbar"
+                             aria-label="Lesson generation progress"
+                             aria-valuenow="{{ lesson.generation_progress }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            <div class="progress-bar"
+                                 style="width: {{ lesson.generation_progress }}%">
+                                {{ lesson.generation_progress }}%
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    {% elif lesson.generation_status == "failed" %}
+
+        <div class="alert alert-danger mt-4" role="alert">
+            <h2 class="h6">Lesson generation failed</h2>
+
+            <p class="mb-0">
+                {{ lesson.generation_error|default:"We couldn't generate this lesson. Please try again." }}
+            </p>
+        </div>
+
+    {% elif lesson.generation_status == "completed" %}
+
+        <div class="row g-4 mt-1">
+
+            <aside class="col-lg-3">
+                {% include "core/lessons/lesson_sidebar.html" %}
+            </aside>
+
+            <main class="col-lg-9">
+                {% include mode_template %}
+            </main>
+
+        </div>
+
+    {% else %}
+
+        <div class="alert alert-secondary mt-4" role="status">
+            <h2 class="h6">Lesson status unavailable</h2>
+            <p class="mb-0">
+                This lesson does not have a recognized generation status.
+            </p>
+        </div>
+
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4 py-lg-5 course-outline-page">
+
+    <div class="mb-4">
+        <a href="{% url 'core:library' %}"
+           class="btn btn-outline-secondary btn-sm mb-3">
+            &larr; Back to My Library
+        </a>
+
+        <div class="d-flex flex-wrap justify-content-between
+                    align-items-start gap-3">
+            <div>
+                <span class="badge text-bg-light border mb-2">
+                    Full Course
+                </span>
+
+                <h1 class="h2 fw-bold mb-2">
+                    {{ course.title }}
+                </h1>
+
+                <p class="text-body-secondary mb-0">
+                    Review your course plan and generate each session
+                    when you are ready.
+                </p>
+            </div>
+
+            <span class="badge rounded-pill
+                {% if course.outline_status == 'approved' %}
+                    text-bg-success
+                {% elif course.outline_status == 'failed' %}
+                    text-bg-danger
+                {% elif course.outline_status == 'generating' %}
+                    text-bg-info
+                {% elif course.outline_status == 'ready_for_review' %}
+                    text-bg-primary
+                {% else %}
+                    text-bg-secondary
+                {% endif %}">
+                {{ course.get_outline_status_display }}
+            </span>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}
+                        alert-dismissible fade show"
+                 role="alert">
+                {{ message }}
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"
+                        aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Course details -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 course-stat-card">
+                <div class="card-body">
+                    <p class="small text-body-secondary mb-1">
+                        Duration
+                    </p>
+                    <h2 class="h5 mb-0">
+                        {{ course.duration_weeks }}
+                        week{{ course.duration_weeks|pluralize }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 course-stat-card">
+                <div class="card-body">
+                    <p class="small text-body-secondary mb-1">
+                        Classes per week
+                    </p>
+                    <h2 class="h5 mb-0">
+                        {{ course.classes_per_week }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 course-stat-card">
+                <div class="card-body">
+                    <p class="small text-body-secondary mb-1">
+                        Session duration
+                    </p>
+                    <h2 class="h5 mb-0">
+                        {{ course.class_duration_minutes }} min
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 course-stat-card">
+                <div class="card-body">
+                    <p class="small text-body-secondary mb-1">
+                        Total sessions
+                    </p>
+                    <h2 class="h5 mb-0">
+                        {{ total_sessions }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if course.description %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h6 fw-semibold mb-2">
+                    About this course
+                </h2>
+                <p class="text-body-secondary mb-0">
+                    {{ course.description|linebreaksbr }}
+                </p>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if course.outline_status == "failed" %}
+        <div class="alert alert-warning" role="alert">
+            <h2 class="h6">Outline generation failed</h2>
+            <p class="mb-0">
+                The course outline could not be completed.
+                Your saved sessions, if any, remain listed below.
+            </p>
+        </div>
+    {% elif course.outline_status == "generating" %}
+        <div class="alert alert-info" role="status">
+            The course outline is still being generated.
+            Refresh this page to check its status.
+        </div>
+    {% endif %}
+
+    <!-- Overall progress -->
+    <section class="card course-progress-card mb-4">
+        <div class="card-body p-3 p-md-4">
+
+            <div class="d-flex flex-wrap justify-content-between
+                        align-items-start gap-2 mb-3">
+                <div>
+                    <h2 class="h5 fw-semibold mb-1">
+                        Generation progress
+                    </h2>
+                    <p class="small text-body-secondary mb-0">
+                        Track the sessions prepared for review.
+                    </p>
+                </div>
+
+                <span class="course-progress-number">
+                    {{ progress_percent }}%
+                </span>
+            </div>
+
+            <div class="progress course-progress-bar mb-3"
+                 role="progressbar"
+                 aria-label="Course session generation progress"
+                 aria-valuenow="{{ progress_percent }}"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+                <div class="progress-bar"
+                     style="width: {{ progress_percent }}%">
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="course-progress-stat">
+                        <span class="course-status-dot bg-success"></span>
+                        <span class="small text-body-secondary">
+                            Ready or approved
+                        </span>
+                        <strong>{{ completed_sessions }}</strong>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="course-progress-stat">
+                        <span class="course-status-dot bg-info"></span>
+                        <span class="small text-body-secondary">
+                            Generating
+                        </span>
+                        <strong>{{ generating_sessions }}</strong>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="course-progress-stat">
+                        <span class="course-status-dot bg-danger"></span>
+                        <span class="small text-body-secondary">
+                            Failed
+                        </span>
+                        <strong>{{ failed_sessions }}</strong>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                    <div class="course-progress-stat">
+                        <span class="course-status-dot bg-secondary"></span>
+                        <span class="small text-body-secondary">
+                            Not generated
+                        </span>
+                        <strong>{{ planned_sessions }}</strong>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Session list -->
+    <div class="d-flex flex-wrap justify-content-between
+                align-items-center gap-2 mb-3">
+        <div>
+            <h2 class="h4 fw-bold mb-1">Course sessions</h2>
+            <p class="text-body-secondary small mb-0">
+                Generate sessions individually to keep control
+                over your lesson materials.
+            </p>
+        </div>
+        <span class="badge text-bg-light border">
+            {{ total_sessions }} sessions
+        </span>
+    </div>
+
+    {% if outline_items %}
+        {% regroup outline_items by week_number as weekly_outlines %}
+
+        <div class="d-grid gap-3">
+            {% for week in weekly_outlines %}
+                <section class="card course-week-card">
+
+                    <div class="card-header course-week-header
+                                d-flex flex-wrap justify-content-between
+                                align-items-center gap-2 py-3">
+                        <h3 class="h5 fw-semibold mb-0">
+                            Week {{ week.grouper }}
+                        </h3>
+
+                        <span class="small text-body-secondary">
+                            {{ week.list|length }}
+                            session{{ week.list|length|pluralize }}
+                        </span>
+                    </div>
+
+                    <div class="list-group list-group-flush">
+                        {% for session in week.list %}
+                            <article class="list-group-item
+                                            course-session-item p-3 p-md-4">
+
+                                <div class="d-flex flex-wrap
+                                            justify-content-between
+                                            align-items-start gap-3">
+
+                                    <div class="course-session-main">
+                                        <p class="small text-body-secondary mb-1">
+                                            Session {{ session.session_number }}
+                                        </p>
+
+                                        <h4 class="h6 fw-semibold mb-2">
+                                            {{ session.title }}
+                                        </h4>
+
+                                        <p class="mb-3">
+                                            {{ session.topic }}
+                                        </p>
+                                    </div>
+
+                                    <span class="badge rounded-pill
+                                        {% if session.status == 'approved' %}
+                                            text-bg-success
+                                        {% elif session.status == 'ready_for_review' %}
+                                            text-bg-primary
+                                        {% elif session.status == 'generating' %}
+                                            text-bg-info
+                                        {% elif session.status == 'failed' %}
+                                            text-bg-danger
+                                        {% else %}
+                                            text-bg-secondary
+                                        {% endif %}">
+                                        {{ session.get_status_display }}
+                                    </span>
+                                </div>
+
+                                {% if session.learning_objectives %}
+                                    <details class="course-objectives mb-3">
+                                        <summary class="small fw-semibold">
+                                            Learning objectives
+                                            ({{ session.learning_objectives|length }})
+                                        </summary>
+
+                                        <ul class="small text-body-secondary mt-2 mb-0">
+                                            {% for objective in session.learning_objectives %}
+                                                <li class="mb-1">
+                                                    {{ objective }}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </details>
+                                {% endif %}
+
+                                {% if session.generation_error %}
+                                    <div class="alert alert-danger py-2 px-3
+                                                small mt-3 mb-0"
+                                         role="alert">
+                                        {{ session.generation_error }}
+                                    </div>
+                                {% endif %}
+
+                                <div class="d-flex flex-wrap
+                                            align-items-center gap-2 mt-3">
+
+                                    {% if session.status == "planned" or session.status == "failed" %}
+
+                                        <form method="post"
+                                              action="{% url 'core:generate_course_session' course_id=course.id outline_item_id=session.id %}">
+                                            {% csrf_token %}
+
+                                            <button type="submit"
+                                                    class="btn btn-primary btn-sm">
+                                                {% if session.status == "failed" %}
+                                                    Retry session
+                                                {% else %}
+                                                    <icon name="play" />
+                                                    Generate session
+                                                {% endif %}
+                                                {{ session.session_number }}
+                                            </button>
+                                        </form>
+
+                                    {% elif session.status == "generating" %}
+
+                                        <button type="button"
+                                                class="btn btn-outline-secondary btn-sm"
+                                                disabled>
+                                            <span class="spinner-border spinner-border-sm
+                                                         me-2"
+                                                  aria-hidden="true"></span>
+                                            Generating session...
+                                        </button>
+
+                                    {% elif session.status == "ready_for_review" or session.status == "approved" %}
+
+                                        {% if session.lesson %}
+                                            <a href="{% url 'core:lesson_detail' lesson_id=session.lesson.id %}"
+                                               class="btn btn-outline-primary btn-sm">
+                                                Review session {{ session.session_number }}
+                                            </a>
+                                        {% else %}
+                                            <span class="small text-warning">
+                                                Lesson record not found.
+                                            </span>
+                                        {% endif %}
+
+                                    {% endif %}
+
+                                    {% if session.status == "ready_for_review" %}
+                                        <span class="small text-body-secondary">
+                                            Ready for your review
+                                        </span>
+                                    {% elif session.status == "approved" %}
+                                        <span class="small text-success">
+                                            Session approved
+                                        </span>
+                                    {% endif %}
+
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <h3 class="h5">No sessions available yet</h3>
+                <p class="text-body-secondary mb-0">
+                    Once a course outline has been saved,
+                    its planned sessions will appear here.
+                </p>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

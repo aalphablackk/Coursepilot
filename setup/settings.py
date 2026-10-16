@@ -14,6 +14,7 @@ from pathlib import Path
 from decouple import config
 import dj_database_url
 import cloudinary
+import ssl
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -235,13 +236,16 @@ DEFAULT_FROM_EMAIL = config(
 )
 
 
-LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "accounts:dashboard"
-# LOGOUT_REDIRECT_URL = "books:home"
+# LOGIN_URL = "accounts:login"
+# LOGIN_REDIRECT_URL = "accounts:dashboard"
+# # LOGOUT_REDIRECT_URL = "books:home"
 
-AUTHENTICATION_BACKENDS = [
-    "accounts.backends.EmailOrUsernameBackend",
-]
+# AUTHENTICATION_BACKENDS = [
+#     "accounts.backends.EmailOrUsernameBackend",
+# ]
+
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "/"
 
 # ============================================================
 # PRODUCTION SECURITY
@@ -275,3 +279,39 @@ OPENAI_MODEL = config(
     default="gpt-4.1-mini",
 )
 AI_PROVIDER = config("AI_PROVIDER", default="gemini").strip().lower()
+
+
+# ============================================================
+# CELERY CONFIGURATION
+# ============================================================
+
+CELERY_BROKER_URL = config(
+    "CELERY_BROKER_URL",
+    default="redis://127.0.0.1:6379/0",
+).strip()
+
+# Enable TLS settings only when using a secure Redis connection.
+if CELERY_BROKER_URL.startswith("rediss://"):
+    CELERY_BROKER_USE_SSL = {
+        "ssl_cert_reqs": ssl.CERT_REQUIRED,
+    }
+
+CELERY_RESULT_BACKEND = None
+
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 600
+CELERY_TASK_SOFT_TIME_LIMIT = 540
+CELERY_TASK_IGNORE_RESULT = True
+
+# Task execution and reliability
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+# Use JSON-compatible task arguments.
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_RESULT_SERIALIZER = "json"
+
+# Time zone
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True

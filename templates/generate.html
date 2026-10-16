@@ -1,382 +1,735 @@
 
-{% extends "base.html" %}
+    {% extends "base.html" %}
 
-{% block title %}Create learning content — CoursePilot{% endblock %}
+    {% block title %}Create learning content â€” CoursePilot{% endblock %}
 
-{% block content %}
-<section class="cp-section-sm">
-    <div class="container cp-container">
+    {% block content %}
+    <section class="cp-section-sm">
+        <div class="container cp-container">
 
-        <div class="cp-page-header">
-            <span class="cp-badge mb-3">Content workspace</span>
-            <h1 class="cp-page-title">Create learning content</h1>
-            <p class="cp-page-description">
-                Start with a topic, your existing material, or both.
-                CoursePilot will help organize the content into the format you need.
+            <div class="cp-page-header">
+                <span class="cp-badge mb-3">Content workspace</span>
+                <h1 class="cp-page-title">Create learning content</h1>
+                <p class="cp-page-description">
+                    Start with a topic, your existing material, or both.
+                    CoursePilot will help organize the content into the format you need.
+                </p>
+            </div>
+
+            {% if generation_error %}
+        <div class="alert alert-danger" role="alert">
+            {{ generation_error }}
+        </div>
+    {% endif %}
+
+{% if generation_lesson %}
+<section
+    id="generation-progress"
+    class="cp-card mb-4"
+    data-status-url="{% url 'core:lesson_generation_status' generation_lesson.id %}"
+    data-detail-url="{% url 'core:lesson_detail' generation_lesson.id %}"
+    aria-live="polite"
+>
+    <div class="d-flex justify-content-between align-items-start gap-3">
+        <div>
+            <span class="cp-badge mb-2">CoursePilot generation</span>
+            <h2 class="h5 mb-1" id="generation-title">
+                Preparing your lesson
+            </h2>
+            <p class="text-secondary mb-3" id="generation-stage">
+                Waiting for the generation worker...
             </p>
         </div>
+        <span class="fw-semibold" id="generation-percent">0%</span>
+    </div>
 
-        {% if submitted and form.is_valid %}
-            <div class="alert alert-info" role="status">
-                <strong>Your inputs are valid.</strong>
-                AI generation and web research are not connected yet.
-                Your content has not been generated or saved.
-            </div>
-        {% endif %}
+    <div
+        class="progress"
+        role="progressbar"
+        aria-label="Lesson generation progress"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+        id="generation-progress-bar"
+        style="height: 8px;"
+    >
+        <div
+            class="progress-bar progress-bar-striped progress-bar-animated"
+            id="generation-progress-fill"
+            style="width: 0%;"
+        ></div>
+    </div>
 
-        <div class="row g-4">
-            <div class="col-lg-8">
-                <div class="cp-card">
+    <div id="generation-error" class="alert alert-danger mt-3 d-none"></div>
 
-                    <form method="post" id="generation-form">
-                        {% csrf_token %}
+    <a
+        id="generation-open-lesson"
+        href="{% url 'core:lesson_detail' generation_lesson.id %}"
+        class="btn btn-primary mt-3 d-none"
+    >
+        Open generated lesson
+    </a>
+</section>
+{% endif %}
 
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger" role="alert">
-                                {{ form.non_field_errors }}
-                            </div>
-                        {% endif %}
 
-                        <!-- Creation mode -->
-                        <div class="mb-4">
-                            <label for="{{ form.mode.id_for_label }}"
-                                   class="form-label">
-                                What would you like to create?
-                            </label>
-
-                            {{ form.mode }}
-
-                            {% if form.mode.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.mode.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Topic -->
-                        <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
-                            <label for="{{ form.topic.id_for_label }}"
-                                   class="form-label">
-                                Topic or subject
-                            </label>
-
-                            {{ form.topic }}
-
-                            <div class="form-text">
-                                Enter a topic, describe your subject, or leave this
-                                blank if your source material already provides the context.
-                            </div>
-
-                            {% if form.topic.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.topic.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Source material: available in every mode -->
-                        <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
-                            <label for="{{ form.source_text.id_for_label }}"
-                                   class="form-label">
-                                Existing material
-                                <span class="text-secondary fw-normal">(optional)</span>
-                            </label>
-
-                            {{ form.source_text }}
-
-                            {% if form.source_text.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.source_text.errors }}
-                                </div>
-                            {% endif %}
-
-                            <div class="form-text mt-2">
-                                Have research, lecture notes, a draft, an existing
-                                presentation outline, or a course syllabus? Paste it
-                                here and CoursePilot will use it as context.
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-start gap-3 mt-2">
-                                <small class="text-secondary">
-                                    Plain text only. Line breaks are supported.
-                                </small>
-                                <small class="text-secondary text-nowrap">
-                                    Max. 50,000 characters
-                                </small>
-                            </div>
-
-                            <div id="source-character-count"
-                                 class="small text-secondary mt-2"
-                                 aria-live="polite">
-                                0 / 50,000 characters
-                            </div>
-                        </div>
-
-                        <!-- Web research option -->
-                        <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
-                            <div class="form-check">
-                                {{ form.use_web_research }}
-
-                                <label class="form-check-label"
-                                       for="{{ form.use_web_research.id_for_label }}">
-                                    Use web research to enrich the content
-                                </label>
-                            </div>
-
-                            <div class="form-text">
-                                Helpful when you are starting with a short topic
-                                or want relevant external information to supplement
-                                your material. Your own research should remain the
-                                primary source when provided.
-                            </div>
-
-                            {% if form.use_web_research.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.use_web_research.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Learner level -->
-                        <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
-                            <label for="{{ form.learner_level.id_for_label }}"
-                                   class="form-label">
-                                Learner level
-                            </label>
-
-                            {{ form.learner_level }}
-
-                            {% if form.learner_level.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.learner_level.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Class duration -->
-                        <div class="mb-4" data-mode="quick_lesson,summary,presentation">
-                            <label for="{{ form.duration_minutes.id_for_label }}"
-                                   class="form-label">
-                                Class duration (minutes)
-                            </label>
-
-                            {{ form.duration_minutes }}
-
-                            {% if form.duration_minutes.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.duration_minutes.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Detail level -->
-                        <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
-                            <label for="{{ form.detail_level.id_for_label }}"
-                                   class="form-label">
-                                Level of detail
-                            </label>
-
-                            {{ form.detail_level }}
-
-                            {% if form.detail_level.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.detail_level.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Custom content action -->
-                        <div class="mb-4" data-mode="custom_content">
-                            <label for="{{ form.content_action.id_for_label }}"
-                                   class="form-label">
-                                How should CoursePilot work with your material?
-                            </label>
-
-                            {{ form.content_action }}
-
-                            {% if form.content_action.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.content_action.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Full course schedule -->
-                        <div data-mode="full_course">
-                            <hr class="my-4">
-
-                            <h2 class="h5 mb-3">Course schedule</h2>
-
-                            <p class="form-text mb-3">
-                                Set the schedule you want CoursePilot to follow.
-                                Your existing syllabus or notes can guide the course structure.
-                            </p>
-
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-4">
-                                    <label for="{{ form.course_weeks.id_for_label }}"
-                                           class="form-label">
-                                        Number of weeks
-                                    </label>
-
-                                    {{ form.course_weeks }}
-
-                                    {% if form.course_weeks.errors %}
-                                        <div class="text-danger small mt-1">
-                                            {{ form.course_weeks.errors }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label for="{{ form.classes_per_week.id_for_label }}"
-                                           class="form-label">
-                                        Classes per week
-                                    </label>
-
-                                    {{ form.classes_per_week }}
-
-                                    {% if form.classes_per_week.errors %}
-                                        <div class="text-danger small mt-1">
-                                            {{ form.classes_per_week.errors }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label for="{{ form.class_duration_minutes.id_for_label }}"
-                                           class="form-label">
-                                        Minutes per class
-                                    </label>
-
-                                    {{ form.class_duration_minutes }}
-
-                                    {% if form.class_duration_minutes.errors %}
-                                        <div class="text-danger small mt-1">
-                                            {{ form.class_duration_minutes.errors }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="d-flex flex-column flex-sm-row gap-3 mt-4">
-                            <button type="submit"
-                                    class="btn btn-primary btn-lg px-4">
-                                Check inputs
-                            </button>
-
-                            <a href="{% url 'home' %}"
-                               class="btn btn-outline-primary btn-lg px-4">
-                                Cancel
-                            </a>
-                        </div>
-
-                    </form>
+    {% if generated_output %}
+        <section class="cp-card mt-4" aria-labelledby="generated-title">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <span class="cp-badge mb-2">Generated content</span>
+                    <h2 class="h3 mb-2" id="generated-title">
+                        {{ generated_output.title }}
+                    </h2>
+                    {% if generated_output.introduction %}
+                        <p class="text-secondary mb-0">
+                            {{ generated_output.introduction }}
+                        </p>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- Sidebar -->
-            <div class="col-lg-4">
-                <aside class="cp-card">
-                    <span class="cp-badge mb-3">How it works</span>
+            {% if generated_output.learning_objectives %}
+                <h3 class="h5 mt-4">Learning objectives</h3>
+                <ul>
+                    {% for objective in generated_output.learning_objectives %}
+                        <li>{{ objective.description }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
-                    <h2 class="h5">Your ideas, better structured</h2>
+            {% if generated_output.sections %}
+                <h3 class="h5 mt-4">Lesson content</h3>
+                {% for section in generated_output.sections %}
+                    <div class="mb-4">
+                        <h4 class="h6">{{ section.heading }}</h4>
+                        <p>{{ section.content|linebreaksbr }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
 
-                    <p class="text-secondary">
-                        Start with a topic, provide your own material, or combine
-                        both. CoursePilot will use the selected format and learning
-                        level to guide the result.
-                    </p>
+            {% if generated_output.key_points %}
+                <h3 class="h5 mt-4">Key points</h3>
+                <ul>
+                    {% for point in generated_output.key_points %}
+                        <li>{{ point }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
-                    <hr>
+            {% if generated_output.examples %}
+                <h3 class="h5 mt-4">Examples</h3>
+                <ul>
+                    {% for example in generated_output.examples %}
+                        <li>{{ example|linebreaksbr }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
-                    <h3 class="h6">A few things to know</h3>
+            {% if generated_output.questions %}
+                <h3 class="h5 mt-4">Review questions</h3>
+                {% for question in generated_output.questions %}
+                    <div class="mb-3">
+                        <p class="fw-semibold mb-1">
+                            {{ forloop.counter }}. {{ question.question }}
+                        </p>
+                        {% if question.answer %}
+                            <p class="text-secondary mb-0">
+                                <strong>Answer:</strong> {{ question.answer }}
+                            </p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
 
-                    <ul class="small text-secondary ps-3 mb-0">
-                        <li class="mb-2">
-                            Your source material can guide the content.
-                        </li>
-                        <li class="mb-2">
-                            Web research can supplement your material when enabled.
-                        </li>
-                        <li class="mb-2">
-                            The learner level helps determine the depth of explanation.
-                        </li>
+            {% if generated_output.activities %}
+                <h3 class="h5 mt-4">Activities</h3>
+                {% for activity in generated_output.activities %}
+                    <div class="mb-3">
+                        <h4 class="h6">{{ activity.title }}</h4>
+                        <p>{{ activity.instructions|linebreaksbr }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if generated_output.assignment %}
+                <h3 class="h5 mt-4">Assignment</h3>
+                <p>{{ generated_output.assignment|linebreaksbr }}</p>
+            {% endif %}
+
+            {% if generated_output.conclusion %}
+                <h3 class="h5 mt-4">Conclusion</h3>
+                <p>{{ generated_output.conclusion|linebreaksbr }}</p>
+            {% endif %}
+
+            {% if generated_output.teaching_notes %}
+                <details class="mt-4">
+                    <summary class="fw-semibold">Teaching notes</summary>
+                    <div class="mt-3">
+                        {{ generated_output.teaching_notes|linebreaksbr }}
+                    </div>
+                </details>
+            {% endif %}
+
+            {% if generated_output.presentation_slides %}
+                <h3 class="h5 mt-4">Presentation slides</h3>
+                {% for slide in generated_output.presentation_slides %}
+                    <div class="border rounded p-3 mb-3">
+                        <h4 class="h6">
+                            Slide {{ forloop.counter }}: {{ slide.title }}
+                        </h4>
+                        {% if slide.bullet_points %}
+                            <ul>
+                                {% for point in slide.bullet_points %}
+                                    <li>{{ point }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        {% if slide.speaker_notes %}
+                            <p class="text-secondary mb-0">
+                                <strong>Speaker notes:</strong>
+                                {{ slide.speaker_notes|linebreaksbr }}
+                            </p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if generated_output.course_weeks %}
+                <h3 class="h5 mt-4">Course schedule</h3>
+                {% for week in generated_output.course_weeks %}
+                    <details class="border rounded p-3 mb-3">
+                        <summary class="fw-semibold">
+                            Week {{ week.week_number }}: {{ week.title }}
+                        </summary>
+
+                        {% if week.learning_goals %}
+                            <ul class="mt-3">
+                                {% for goal in week.learning_goals %}
+                                    <li>{{ goal }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+
+                        {% for session in week.sessions %}
+                            <div class="border-top pt-3 mt-3">
+                                <h4 class="h6">
+                                    Class {{ session.session_number }}:
+                                    {{ session.title }}
+                                </h4>
+                                <p class="text-secondary">{{ session.topic }}</p>
+
+                                {% if session.learning_objectives %}
+                                    <strong>Objectives</strong>
+                                    <ul>
+                                        {% for objective in session.learning_objectives %}
+                                            <li>{{ objective }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+
+                                {% if session.content %}
+                                    <div>{{ session.content|linebreaksbr }}</div>
+                                {% endif %}
+
+                                {% if session.activity %}
+                                    <p class="mt-2">
+                                        <strong>Activity:</strong>
+                                        {{ session.activity|linebreaksbr }}
+                                    </p>
+                                {% endif %}
+
+                                {% if session.quiz_questions %}
+                                    <strong>After-class quiz</strong>
+                                    {% for question in session.quiz_questions %}
+                                        <p class="mt-2 mb-1">
+                                            {{ forloop.counter }}. {{ question.question }}
+                                        </p>
+                                        {% if question.answer %}
+                                            <p class="text-secondary">
+                                                <strong>Answer:</strong>
+                                                {{ question.answer }}
+                                            </p>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+
+                                {% if session.assignment %}
+                                    <p>
+                                        <strong>Assignment:</strong>
+                                        {{ session.assignment|linebreaksbr }}
+                                    </p>
+                                {% endif %}
+
+                                {% if session.teaching_notes %}
+                                    <details>
+                                        <summary>Teaching notes</summary>
+                                        <p class="mt-2">
+                                            {{ session.teaching_notes|linebreaksbr }}
+                                        </p>
+                                    </details>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </details>
+                {% endfor %}
+            {% endif %}
+
+            {% if generated_output.sources %}
+                <h3 class="h5 mt-4">Sources</h3>
+                <ul>
+                    {% for source in generated_output.sources %}
                         <li>
-                            You will be able to review the generated result before using it.
+                            {% if source.url %}
+                                <a href="{{ source.url }}"
+                                target="_blank"
+                                rel="noopener noreferrer">
+                                    {{ source.title|default:source.url }}
+                                </a>
+                            {% else %}
+                                {{ source.title|default:"Source" }}
+                            {% endif %}
                         </li>
-                    </ul>
-                </aside>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </section>
+    {% endif %}
+
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="cp-card">
+
+                        <form method="post" id="generation-form">
+                            {% csrf_token %}
+
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger" role="alert">
+                                    {{ form.non_field_errors }}
+                                </div>
+                            {% endif %}
+
+                            <!-- Creation mode -->
+                            <div class="mb-4">
+                                <label for="{{ form.mode.id_for_label }}"
+                                    class="form-label">
+                                    What would you like to create?
+                                </label>
+
+                                {{ form.mode }}
+
+                                {% if form.mode.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.mode.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Topic -->
+                            <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
+                                <label for="{{ form.topic.id_for_label }}"
+                                    class="form-label">
+                                    Topic or subject
+                                </label>
+
+                                {{ form.topic }}
+
+                                <div class="form-text">
+                                    Enter a topic, describe your subject, or leave this
+                                    blank if your source material already provides the context.
+                                </div>
+
+                                {% if form.topic.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.topic.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Source material: available in every mode -->
+                            <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
+                                <label for="{{ form.source_text.id_for_label }}"
+                                    class="form-label">
+                                    Existing material
+                                    <span class="text-secondary fw-normal">(optional)</span>
+                                </label>
+
+                                {{ form.source_text }}
+
+                                {% if form.source_text.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.source_text.errors }}
+                                    </div>
+                                {% endif %}
+
+                                <div class="form-text mt-2">
+                                    Have research, lecture notes, a draft, an existing
+                                    presentation outline, or a course syllabus? Paste it
+                                    here and CoursePilot will use it as context.
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-start gap-3 mt-2">
+                                    <small class="text-secondary">
+                                        Plain text only. Line breaks are supported.
+                                    </small>
+                                    <small class="text-secondary text-nowrap">
+                                        Max. 50,000 characters
+                                    </small>
+                                </div>
+
+                                <div id="source-character-count"
+                                    class="small text-secondary mt-2"
+                                    aria-live="polite">
+                                    0 / 50,000 characters
+                                </div>
+                            </div>
+
+                            <!-- Web research option -->
+                            <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
+                                <div class="form-check">
+                                    {{ form.use_web_research }}
+
+                                    <label class="form-check-label"
+                                        for="{{ form.use_web_research.id_for_label }}">
+                                        Use web research to enrich the content
+                                    </label>
+                                </div>
+
+                                <div class="form-text">
+                                    Helpful when you are starting with a short topic
+                                    or want relevant external information to supplement
+                                    your material. Your own research should remain the
+                                    primary source when provided.
+                                </div>
+
+                                {% if form.use_web_research.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.use_web_research.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Learner level -->
+                            <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
+                                <label for="{{ form.learner_level.id_for_label }}"
+                                    class="form-label">
+                                    Learner level
+                                </label>
+
+                                {{ form.learner_level }}
+
+                                {% if form.learner_level.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.learner_level.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Class duration -->
+                            <div class="mb-4" data-mode="quick_lesson,summary,presentation">
+                                <label for="{{ form.duration_minutes.id_for_label }}"
+                                    class="form-label">
+                                    Class duration (minutes)
+                                </label>
+
+                                {{ form.duration_minutes }}
+
+                                {% if form.duration_minutes.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.duration_minutes.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Detail level -->
+                            <div class="mb-4" data-mode="quick_lesson,summary,presentation,custom_content,full_course">
+                                <label for="{{ form.detail_level.id_for_label }}"
+                                    class="form-label">
+                                    Level of detail
+                                </label>
+
+                                {{ form.detail_level }}
+
+                                {% if form.detail_level.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.detail_level.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Custom content action -->
+                            <div class="mb-4" data-mode="custom_content">
+                                <label for="{{ form.content_action.id_for_label }}"
+                                    class="form-label">
+                                    How should CoursePilot work with your material?
+                                </label>
+
+                                {{ form.content_action }}
+
+                                {% if form.content_action.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.content_action.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Full course schedule -->
+                            <div data-mode="full_course">
+                                <hr class="my-4">
+
+                                <h2 class="h5 mb-3">Course schedule</h2>
+
+                                <p class="form-text mb-3">
+                                    Set the schedule you want CoursePilot to follow.
+                                    Your existing syllabus or notes can guide the course structure.
+                                </p>
+
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-4">
+                                        <label for="{{ form.course_weeks.id_for_label }}"
+                                            class="form-label">
+                                            Number of weeks
+                                        </label>
+
+                                        {{ form.course_weeks }}
+
+                                        {% if form.course_weeks.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.course_weeks.errors }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="{{ form.classes_per_week.id_for_label }}"
+                                            class="form-label">
+                                            Classes per week
+                                        </label>
+
+                                        {{ form.classes_per_week }}
+
+                                        {% if form.classes_per_week.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.classes_per_week.errors }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="{{ form.class_duration_minutes.id_for_label }}"
+                                            class="form-label">
+                                            Minutes per class
+                                        </label>
+
+                                        {{ form.class_duration_minutes }}
+
+                                        {% if form.class_duration_minutes.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.class_duration_minutes.errors }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="d-flex flex-column flex-sm-row gap-3 mt-4">
+                                <button type="submit"
+                                        class="btn btn-primary btn-lg px-4">
+                                    Check inputs
+                                </button>
+
+                                <a href="{% url 'home' %}"
+                                class="btn btn-outline-primary btn-lg px-4">
+                                    Cancel
+                                </a>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-lg-4">
+                    <aside class="cp-card">
+                        <span class="cp-badge mb-3">How it works</span>
+
+                        <h2 class="h5">Your ideas, better structured</h2>
+
+                        <p class="text-secondary">
+                            Start with a topic, provide your own material, or combine
+                            both. CoursePilot will use the selected format and learning
+                            level to guide the result.
+                        </p>
+
+                        <hr>
+
+                        <h3 class="h6">A few things to know</h3>
+
+                        <ul class="small text-secondary ps-3 mb-0">
+                            <li class="mb-2">
+                                Your source material can guide the content.
+                            </li>
+                            <li class="mb-2">
+                                Web research can supplement your material when enabled.
+                            </li>
+                            <li class="mb-2">
+                                The learner level helps determine the depth of explanation.
+                            </li>
+                            <li>
+                                You will be able to review the generated result before using it.
+                            </li>
+                        </ul>
+                    </aside>
+                </div>
             </div>
+
         </div>
+    </section>
+    {% endblock %}
 
-    </div>
-</section>
-{% endblock %}
+    {% block extra_js %}
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const modeSelect = document.getElementById("id_mode");
+        const modeGroups = document.querySelectorAll("[data-mode]");
 
-{% block extra_js %}
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const modeSelect = document.getElementById("id_mode");
-    const modeGroups = document.querySelectorAll("[data-mode]");
+(() => {
+    const panel = document.getElementById("generation-progress");
+    if (!panel) return;
 
-    function updateModeFields() {
-        if (!modeSelect) {
-            return;
-        }
+    const statusUrl = panel.dataset.statusUrl;
+    const detailUrl = panel.dataset.detailUrl;
+    const title = document.getElementById("generation-title");
+    const stage = document.getElementById("generation-stage");
+    const percent = document.getElementById("generation-percent");
+    const bar = document.getElementById("generation-progress-bar");
+    const fill = document.getElementById("generation-progress-fill");
+    const error = document.getElementById("generation-error");
+    const openLink = document.getElementById("generation-open-lesson");
 
-        const mode = modeSelect.value;
+    let stopped = false;
 
-        modeGroups.forEach(function (group) {
-            const allowedModes = group.dataset.mode
-                .split(",")
-                .map(function (value) {
-                    return value.trim();
-                });
+    async function refreshProgress() {
+        if (stopped) return;
 
-            const visible = allowedModes.includes(mode);
+        try {
+            const response = await fetch(statusUrl, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                credentials: "same-origin",
+                cache: "no-store",
+            });
 
-            group.hidden = !visible;
+            if (!response.ok) {
+                throw new Error("Unable to retrieve generation status.");
+            }
 
-            group.querySelectorAll("input, select, textarea").forEach(
-                function (field) {
-                    field.disabled = !visible;
-                }
+            const data = await response.json();
+            const value = Math.max(
+                0,
+                Math.min(100, Number(data.progress) || 0)
             );
-        });
-    }
 
-    if (modeSelect) {
-        modeSelect.addEventListener("change", updateModeFields);
-        updateModeFields();
-    }
+            stage.textContent = data.stage || "Generating your lesson...";
+            percent.textContent = `${value}%`;
+            fill.style.width = `${value}%`;
+            bar.setAttribute("aria-valuenow", String(value));
 
-    const sourceText = document.getElementById("id_source_text");
-    const characterCount = document.getElementById("source-character-count");
-    const maxLength = 50000;
+            if (data.status === "completed") {
+                stopped = true;
+                title.textContent = "Your lesson is ready";
+                stage.textContent = "Generation completed successfully.";
+                fill.classList.remove(
+                    "progress-bar-animated",
+                    "progress-bar-striped"
+                );
+                openLink.classList.remove("d-none");
+                openLink.href = detailUrl;
+                openLink.textContent = "Open generated lesson";
+                window.location.assign(detailUrl);
+                return;
+            }
 
-    function updateCharacterCount() {
-        if (!sourceText || !characterCount) {
-            return;
+            if (data.status === "failed") {
+                stopped = true;
+                title.textContent = "Generation could not be completed";
+                error.textContent = data.error || "Please try again.";
+                error.classList.remove("d-none");
+                fill.classList.remove(
+                    "progress-bar-animated",
+                    "progress-bar-striped"
+                );
+                return;
+            }
+        } catch (err) {
+            stage.textContent =
+                "Connection interrupted. Retrying status check...";
         }
 
-        const length = sourceText.value.length;
-
-        characterCount.textContent =
-            `${length.toLocaleString()} / ${maxLength.toLocaleString()} characters`;
-
-        characterCount.classList.toggle(
-            "text-danger",
-            length > maxLength
-        );
+        if (!stopped) {
+            window.setTimeout(refreshProgress, 2000);
+        }
     }
 
-    if (sourceText) {
-        sourceText.addEventListener("input", updateCharacterCount);
-        updateCharacterCount();
-    }
-});
-</script>
-{% endblock %}
+    refreshProgress();
+})();
+
+
+        function updateModeFields() {
+            if (!modeSelect) {
+                return;
+            }
+
+            const mode = modeSelect.value;
+
+            modeGroups.forEach(function (group) {
+                const allowedModes = group.dataset.mode
+                    .split(",")
+                    .map(function (value) {
+                        return value.trim();
+                    });
+
+                const visible = allowedModes.includes(mode);
+
+                group.hidden = !visible;
+
+                group.querySelectorAll("input, select, textarea").forEach(
+                    function (field) {
+                        field.disabled = !visible;
+                    }
+                );
+            });
+        }
+
+        if (modeSelect) {
+            modeSelect.addEventListener("change", updateModeFields);
+            updateModeFields();
+        }
+
+        const sourceText = document.getElementById("id_source_text");
+        const characterCount = document.getElementById("source-character-count");
+        const maxLength = 50000;
+
+        function updateCharacterCount() {
+            if (!sourceText || !characterCount) {
+                return;
+            }
+
+            const length = sourceText.value.length;
+
+            characterCount.textContent =
+                `${length.toLocaleString()} / ${maxLength.toLocaleString()} characters`;
+
+            characterCount.classList.toggle(
+                "text-danger",
+                length > maxLength
+            );
+        }
+
+        if (sourceText) {
+            sourceText.addEventListener("input", updateCharacterCount);
+            updateCharacterCount();
+        }
+    });
+    </script>
+    {% endblock %}

@@ -1,0 +1,79 @@
+
+<div class="question-card border rounded-3 p-3 p-md-4 mb-4"
+     data-question
+     data-correct-answer="{{ question.answer|default:''|escape }}">
+
+    <div class="d-flex align-items-start gap-2 mb-3">
+        <span class="badge text-bg-light border">
+            Question {{ question_number }}
+        </span>
+    </div>
+
+    <h4 class="h6 fw-semibold mb-3">
+        {{ question.question }}
+    </h4>
+
+    {% if question.options %}
+        <fieldset class="border-0 p-0 m-0">
+            <legend class="visually-hidden">
+                Choose your answer
+            </legend>
+
+            <div class="d-grid gap-2">
+                {% for option in question.options %}
+                    <label class="question-option d-flex align-items-start gap-3 border rounded-3 p-3">
+                        <input
+                            class="form-check-input flex-shrink-0 mt-1"
+                            type="radio"
+                            name="question_{{ question_number }}"
+                            value="{{ option|escape }}">
+
+                        <span>{{ option }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+    {% else %}
+        <div class="alert alert-warning small mb-0">
+            Multiple-choice options are not available for this question.
+        </div>
+    {% endif %}
+
+    {% if question.hint %}
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary mt-3"
+                data-show-hint>
+            Show hint
+        </button>
+
+        <div class="d-none small text-body-secondary mt-2"
+             data-hint>
+            {{ question.hint }}
+        </div>
+    {% endif %}
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                data-check-answer
+                {% if not question.options %}disabled{% endif %}>
+            Check answer
+        </button>
+    </div>
+
+    <div data-feedback
+         class="d-none mt-3"
+         role="status"
+         aria-live="polite">
+    </div>
+
+    {% if question.explanation %}
+        <div data-explanation class="d-none mt-3">
+            <div class="fw-semibold small mb-1">Explanation</div>
+            <p class="small text-body-secondary mb-0">
+                {{ question.explanation }}
+            </p>
+        </div>
+    {% endif %}
+
+</div>

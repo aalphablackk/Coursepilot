@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from .models import Course, Lesson
-
+from unittest.mock import patch
 User = get_user_model()
 
 from django.test import TestCase
@@ -114,6 +114,14 @@ class GenerationValidationRegressionTests(TestCase):
 class GenerationViewTests(TestCase):
     # Keep all four existing test methods here.
     """Test the actual generation page response."""
+    form_data = {
+        "mode": "quick_lesson",
+        "topic": "Becoming a Man",
+        "learner_level": "intermediate",
+        "detail_level": "standard",
+        "duration_minutes": 60,
+        "content_action": "organize",
+    }
 
     def valid_post_data(self):
         return {
@@ -137,15 +145,59 @@ class GenerationViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Your inputs are valid.")
 
-    def test_valid_post_shows_validation_notice(self):
-        response = self.client.post(
-            reverse("core:generate"),
-            self.valid_post_data(),
-        )
+
+    @patch("core.views.generate_lesson_task.delay")
+    def test_valid_post_queues_lesson_generation(self, mock_task):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                reverse("core:generate"),
+                self.form_data,
+            )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Your inputs are valid.")
-        self.assertContains(response, "AI generation")
+
+        lesson = Lesson.objects.get(topic="Becoming a Man")
+
+        self.assertEqual(
+            lesson.generation_status,
+            Lesson.GenerationStatus.GENERATING,
+        )
+        self.assertContains(response, "generation-progress")
+        mock_task.assert_called_once()
+
+    # @patch("core.views.generate_lesson")
+    # def test_valid_post_generates_lesson(self, mock_generate_lesson):
+    #     from core.generation_schemas import LessonOutput
+    #     from ai_providers.schemas import AIResponse
+
+    #     mock_generate_lesson.return_value = (
+    #         LessonOutput(
+    #             title="Becoming a Man",
+    #             introduction="An introduction to personal growth.",
+    #         ),
+    #         AIResponse(
+    #             content='{"title": "Becoming a Man"}',
+    #             provider="gemini",
+    #             model="test-model",
+    #         ),
+    #     )
+
+    #     response = self.client.post(
+    #         reverse("core:generate"),
+    #         self.form_data,
+    #         follow=True,
+    #     )
+
+    #     self.assertEqual(response.status_code, 200)
+    #     self.assertContains(response, "Becoming a Man")
+
+    #     self.assertEqual(len(response.redirect_chain), 1)
+    #     self.assertEqual(
+    #         response.redirect_chain[0][0],
+    #         f"/lessons/{Lesson.objects.latest('created_at').id}/",
+    #     )
+
+    #     mock_generate_lesson.assert_called_once()
 
     def test_missing_duration_displays_error_not_success(self):
         data = self.valid_post_data()

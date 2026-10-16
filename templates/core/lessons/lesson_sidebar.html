@@ -1,0 +1,276 @@
+<div class="card lesson-sidebar-card border-0 shadow-sm"
+     id="lessonNavigator">
+
+    <div class="card-body p-3">
+
+        <!-- Sidebar header -->
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0">Your learning</h2>
+
+            <button class="btn btn-sm btn-light d-lg-none"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#lessonContentsPanel"
+                    aria-expanded="false"
+                    aria-controls="lessonContentsPanel"
+                    aria-label="Toggle learning navigation">
+                <span aria-hidden="true">&#9776;</span>
+            </button>
+        </div>
+
+        <!-- Lesson progress -->
+        <div class="lesson-sidebar-progress">
+            <div class="d-flex align-items-start justify-content-between gap-2 small mb-2">
+                <span class="text-body-secondary">
+                    Your progress through the lesson
+                </span>
+
+                <span id="lessonProgressText"
+                      class="fw-semibold flex-shrink-0">0%</span>
+            </div>
+
+            <div class="progress"
+                 role="progressbar"
+                 aria-label="Lesson progress"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-valuenow="0"
+                 id="lessonProgressBar"
+                 style="height: 6px;">
+                <div class="progress-bar"
+                     id="lessonProgressFill"
+                     style="width: 0%">
+                </div>
+            </div>
+
+            <p class="small text-body-secondary mt-2 mb-3">
+                Follow the lesson at your own pace.
+            </p>
+        </div>
+
+        <hr class="mt-0 mb-2">
+
+        <!-- Main navigation
+             Open on desktop, collapsed on mobile -->
+        <div class="collapse show d-lg-block lesson-sidebar-scroll"
+             id="lessonContentsPanel">
+
+            <nav id="lessonContents"
+                 class="nav flex-column lesson-sidebar-nav"
+                 aria-label="Learning navigation">
+
+                <!-- Course sessions -->
+                {% if lesson.course and course_sessions %}
+                    <div class="mb-3">
+
+                        <button class="btn btn-light w-100 d-flex align-items-center justify-content-between text-start mb-2"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#courseSessionLinks"
+                                aria-expanded="false"
+                                aria-controls="courseSessionLinks">
+
+                            <span class="fw-semibold small">
+                                Course sessions
+                            </span>
+
+                            <span class="dropdown-arrow"
+                                  aria-hidden="true">&#9662;</span>
+                        </button>
+
+                        <div class="collapse"
+                             id="courseSessionLinks">
+
+                            {% regroup course_sessions by week_number as weekly_sessions %}
+
+                            {% for week in weekly_sessions %}
+                                <div class="mb-3">
+
+                                    <div class="small fw-semibold text-body-secondary px-2 mb-2">
+                                        Week {{ week.grouper }}
+                                    </div>
+
+                                    <div class="d-grid gap-1">
+
+                                        {% for session in week.list %}
+                                            {% if session.lesson %}
+
+                                                <a href="{% url 'core:lesson_detail' lesson_id=session.lesson.id %}"
+                                                   class="nav-link d-flex align-items-start gap-2 {% if session.lesson.id == lesson.id %}active{% endif %}"
+                                                   {% if session.lesson.id == lesson.id %}aria-current="page"{% endif %}>
+
+                                                    <span class="lesson-nav-dot mt-2"
+                                                          aria-hidden="true"></span>
+
+                                                    <span class="flex-grow-1 min-w-0">
+                                                        <span class="d-block small text-body-secondary">
+                                                            Session {{ session.session_number }}
+                                                        </span>
+
+                                                        <span class="lesson-nav-title d-block">
+                                                            {{ session.title }}
+                                                        </span>
+                                                    </span>
+
+                                                    {% if session.lesson.id == lesson.id %}
+                                                        <span class="badge text-bg-primary flex-shrink-0">
+                                                            Current
+                                                        </span>
+                                                    {% elif session.status == "approved" %}
+                                                        <span class="badge text-bg-success flex-shrink-0">
+                                                            Approved
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge text-bg-success flex-shrink-0">
+                                                            Ready
+                                                        </span>
+                                                    {% endif %}
+
+                                                </a>
+
+                                            {% else %}
+
+                                                <div class="nav-link d-flex align-items-start gap-2 text-body-secondary">
+
+                                                    <span class="lesson-nav-dot mt-2"
+                                                          aria-hidden="true"></span>
+
+                                                    <span class="flex-grow-1 min-w-0">
+                                                        <span class="d-block small">
+                                                            Session {{ session.session_number }}
+                                                        </span>
+
+                                                        <span class="lesson-nav-title d-block">
+                                                            {{ session.title }}
+                                                        </span>
+
+                                                        <span class="badge mt-1
+                                                            {% if session.status == 'failed' %}
+                                                                text-bg-danger
+                                                            {% elif session.status == 'generating' %}
+                                                                text-bg-info
+                                                            {% else %}
+                                                                text-bg-secondary
+                                                            {% endif %}">
+                                                            {{ session.get_status_display }}
+                                                        </span>
+                                                    </span>
+
+                                                </div>
+
+                                            {% endif %}
+                                        {% endfor %}
+
+                                    </div>
+                                </div>
+                            {% endfor %}
+
+                        </div>
+
+                        <a href="{% url 'core:course_outline' course_id=lesson.course.id %}"
+                           class="btn btn-outline-secondary btn-sm w-100 mt-2">
+                            View course outline
+                        </a>
+
+                        <hr class="my-3">
+
+                    </div>
+                {% endif %}
+
+                <!-- Current lesson sections -->
+                <div class="mb-2">
+
+                    {% if lesson.course %}
+
+                        <button class="btn btn-light w-100 d-flex align-items-center justify-content-between text-start mb-2"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#lessonSectionLinks"
+                                aria-expanded="false"
+                                aria-controls="lessonSectionLinks">
+
+                            <span class="fw-semibold small">
+                                This lesson
+                            </span>
+
+                            <span class="dropdown-arrow"
+                                  aria-hidden="true">&#9662;</span>
+                        </button>
+
+                        <div class="collapse"
+                             id="lessonSectionLinks">
+
+                            {% for step in lesson_steps %}
+                                <a class="nav-link {% if forloop.first %}active{% endif %}"
+                                   href="#coursePlayer"
+                                   data-lesson-link
+                                   data-player-index="{{ forloop.counter0 }}"
+                                   {% if forloop.first %}aria-current="step"{% endif %}>
+
+                                    <span class="lesson-nav-dot"
+                                          aria-hidden="true"></span>
+
+                                    <span class="lesson-nav-title">
+                                        {{ step.title }}
+                                    </span>
+
+                                </a>
+                            {% empty %}
+                                <p class="small text-body-secondary px-2 py-3 mb-0">
+                                    No lesson sections available yet.
+                                </p>
+                            {% endfor %}
+
+                        </div>
+
+                    {% else %}
+
+                        {% for step in lesson_steps %}
+                            <a class="nav-link {% if forloop.first %}active{% endif %}"
+                               href="#coursePlayer"
+                               data-lesson-link
+                               data-player-index="{{ forloop.counter0 }}"
+                               {% if forloop.first %}aria-current="step"{% endif %}>
+
+                                <span class="lesson-nav-dot"
+                                      aria-hidden="true"></span>
+
+                                <span class="lesson-nav-title">
+                                    {{ step.title }}
+                                </span>
+
+                            </a>
+                        {% empty %}
+                            <p class="small text-body-secondary px-2 py-3 mb-0">
+                                No lesson sections available yet.
+                            </p>
+                        {% endfor %}
+
+                    {% endif %}
+
+                </div>
+
+            </nav>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    #lessonNavigator .dropdown-arrow {
+        display: inline-block;
+        transition: transform 0.2s ease;
+    }
+
+    #lessonNavigator button[aria-expanded="true"] .dropdown-arrow {
+        transform: rotate(180deg);
+    }
+
+    #lessonNavigator .lesson-nav-title {
+        overflow-wrap: anywhere;
+    }
+
+    #lessonNavigator .lesson-sidebar-scroll {
+        min-width: 0;
+    }
+</style>

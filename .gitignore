@@ -20,4 +20,9 @@ db.sqlite3
 
 # IDE
 .vscode/
+
+ai_providerscore.zip
 .idea/
+runserver.bat
+course.zip
+course_review_latest.zip

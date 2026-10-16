@@ -273,12 +273,6 @@ class Lesson(models.Model):
         default=GenerationStatus.PENDING,
         db_index=True,
     )
-    generation_status = models.CharField(
-    max_length=12,
-    choices=GenerationStatus.choices,
-    default=GenerationStatus.PENDING,
-    db_index=True,
-)
 
     generation_progress = models.PositiveSmallIntegerField(
         default=0,

@@ -124,6 +124,10 @@ class OpenAIProvider(BaseAIProvider):
 
         usage_data = getattr(response, "usage", None)
 
+        incomplete_details = getattr(response, "incomplete_details", None)
+        incomplete_reason = getattr(incomplete_details, "reason", None)
+        response_status = getattr(response, "status", None)
+
         return AIResponse(
             content=text.strip(),
             provider=self.provider_name,
@@ -133,7 +137,13 @@ class OpenAIProvider(BaseAIProvider):
                 output_tokens=getattr(usage_data, "output_tokens", None),
                 total_tokens=getattr(usage_data, "total_tokens", None),
             ),
-            finish_reason=getattr(response, "status", None),
+            finish_reason=(
+                incomplete_reason
+                or response_status
+            ),
             request_id=getattr(response, "_request_id", None),
-            metadata={},
+            metadata={
+                "response_status": response_status,
+                "incomplete_reason": incomplete_reason,
+            },
         )

@@ -190,7 +190,9 @@ class GeminiProvider(BaseAIProvider):
                 ),
                 finish_reason=finish_reason,
                 request_id=None,
-                metadata={},
+                metadata={
+                    "finish_reason": finish_reason,
+                },
             )
 
         raise AIProviderUnavailableError(

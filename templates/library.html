@@ -1,0 +1,209 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4 py-lg-5">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h2 mb-1">My Library</h1>
+            <p class="text-body-secondary mb-0">
+                Browse and continue learning with your generated lessons.
+            </p>
+        </div>
+
+        <a href="{% url 'core:generate' %}" class="btn btn-primary">
+            Create a lesson
+        </a>
+    </div>
+
+    <form method="get" class="card card-body mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label for="search" class="form-label">Search lessons</label>
+                <input
+                    type="search"
+                    id="search"
+                    name="q"
+                    class="form-control"
+                    placeholder="Search by title or topic"
+                    value="{{ search_query }}"
+                >
+            </div>
+
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select id="status" name="status" class="form-select">
+                    <option value="">All statuses</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}"
+                            {% if selected_status == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="mode" class="form-label">Lesson type</label>
+                <select id="mode" name="mode" class="form-select">
+                    <option value="">All types</option>
+                    {% for value, label in mode_choices %}
+                        <option value="{{ value }}"
+                            {% if selected_mode == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-1 d-grid">
+                <button type="submit" class="btn btn-outline-primary">
+                    Go
+                </button>
+            </div>
+        </div>
+    </form>
+
+    {% if courses %}
+        <section class="mb-5">
+            <h2 class="h4 mb-3">Full Courses</h2>
+
+            <div class="row g-3">
+                {% for course in courses %}
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h3 class="h5">{{ course.title }}</h3>
+
+                                <p class="text-muted small">
+                                    {{ course.get_learner_level_display }}
+                                    · {{ course.duration_weeks }} weeks
+                                    · {{ course.classes_per_week }} classes/week
+                                </p>
+
+                                <div class="d-flex justify-content-between small mb-2">
+                                    <span>Session progress</span>
+                                    <span>{{ course.progress_percent }}%</span>
+                                </div>
+
+                                <div
+                                    class="progress mb-3"
+                                    role="progressbar"
+                                    aria-valuenow="{{ course.progress_percent }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    aria-label="Course generation progress"
+                                >
+                                    <div
+                                        class="progress-bar"
+                                        style="width: {{ course.progress_percent }}%"
+                                    ></div>
+                                </div>
+
+                                <p class="small text-muted">
+                                    {{ course.completed_sessions }} of
+                                    {{ course.total_sessions }} sessions ready
+                                </p>
+
+                                <a
+                                    href="{% url 'core:course_outline' course_id=course.id %}"
+                                    class="btn btn-outline-primary btn-sm"
+                                >
+                                    View Course Outline
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if lessons %}
+        <section>
+            <h2 class="h4 mb-3">Lessons</h2>
+
+            <div class="row g-3">
+                {% for lesson in lessons %}
+                    <div class="col-md-6 col-xl-4">
+                        <article class="card h-100">
+                            <div class="card-body d-flex flex-column">
+
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                    <span class="badge text-bg-light border">
+                                        {{ lesson.get_generation_mode_display }}
+                                    </span>
+
+                                    {% if lesson.generation_status == "completed" %}
+                                        <span class="badge text-bg-success">
+                                            Completed
+                                        </span>
+                                    {% elif lesson.generation_status == "failed" %}
+                                        <span class="badge text-bg-danger">
+                                            Failed
+                                        </span>
+                                    {% elif lesson.generation_status == "generating" %}
+                                        <span class="badge text-bg-primary">
+                                            Generating
+                                        </span>
+                                    {% else %}
+                                        <span class="badge text-bg-secondary">
+                                            {{ lesson.get_generation_status_display }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <h3 class="h5">{{ lesson.title }}</h3>
+
+                                {% if lesson.topic %}
+                                    <p class="text-body-secondary small mb-2">
+                                        Topic: {{ lesson.topic }}
+                                    </p>
+                                {% endif %}
+
+                                <p class="small text-body-secondary mb-3">
+                                    {{ lesson.get_learner_level_display }}
+                                    · {{ lesson.duration_minutes }} minutes
+                                </p>
+
+                                <p class="small text-body-secondary">
+                                    Updated {{ lesson.updated_at|date:"M j, Y" }}
+                                </p>
+
+                                <div class="mt-auto pt-2">
+                                    <a
+                                        href="{% url 'core:lesson_detail' lesson_id=lesson.id %}"
+                                        class="btn btn-outline-primary w-100"
+                                    >
+                                        {% if lesson.generation_status == "completed" %}
+                                            Open lesson
+                                        {% else %}
+                                            View status
+                                        {% endif %}
+                                    </a>
+                                </div>
+
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+    {% elif not courses %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <h2 class="h5">No lessons found</h2>
+                <p class="text-body-secondary">
+                    Try changing your search or filters, or generate your first lesson.
+                </p>
+                <a href="{% url 'core:generate' %}" class="btn btn-primary">
+                    Generate a lesson
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -20,6 +20,7 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2 py-3 py-lg-0">
+
                 <li class="nav-item">
                     {% comment %} <a class="nav-link" href="{% url 'home' %}">Home</a> {% endcomment %}
                 </li>
@@ -27,7 +28,9 @@
                     {% comment %} <a class="nav-link" href="{% url 'generate' %}">Create lesson</a> {% endcomment %}
                 </li>
                 <li class="nav-item">
-                    {% comment %} <a class="nav-link" href="{% url 'library' %}">My library</a> {% endcomment %}
+                    <a href="{% url 'core:library' %}" class="nav-link">
+                        Library
+                    </a>
                 </li>
                 <li class="nav-item ms-lg-2">
                     {% comment %} <a class="btn btn-primary px-3" href="{% url 'generate' %}"> {% endcomment %}
