@@ -79,8 +79,15 @@
             <aside class="col-lg-3">
                 {% include "core/lessons/lesson_sidebar.html" %}
             </aside>
-
             <main class="col-lg-9">
+                {% if request.user.is_authenticated and lesson.creator_id == request.user.id %}
+                    <div class="d-flex justify-content-end mb-3">
+                        <a href="{% url 'core:edit_lesson' lesson.id %}"
+                        class="btn btn-outline-primary">
+                            Edit lesson
+                        </a>
+                    </div>
+                {% endif %}
                 {% include mode_template %}
             </main>
 
