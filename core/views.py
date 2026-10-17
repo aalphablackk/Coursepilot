@@ -1,7 +1,12 @@
 # from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect,get_object_or_404
 from django.http import Http404
-from .forms import GenerationForm
+from .forms import (
+    GenerationForm,
+    LessonDetailsForm,
+    LessonSectionForm,
+    LessonQuestionForm,
+)
 from .models import Lesson
 from .services import generate_lesson, LessonGenerationError
 from django.db.models import Q
@@ -757,5 +762,266 @@ def course_outline(request, course_id):
             "generating_sessions": generating_sessions,
             "failed_sessions": failed_sessions,
             "progress_percent": progress_percent,
+        },
+    )
+
+# @login_required
+def edit_lesson(request, lesson_id):
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id,
+        creator=request.user,
+    )
+
+    if lesson.generation_status != Lesson.GenerationStatus.COMPLETED:
+        messages.warning(
+            request,
+            "Only completed lessons can be edited.",
+        )
+        return redirect("core:lesson_detail", lesson_id=lesson.id)
+
+    content = lesson.presentation_content
+    if not isinstance(content, dict):
+        content = {}
+
+    sections = content.get("sections", [])
+    questions = content.get("questions", [])
+
+    if not isinstance(sections, list):
+        sections = []
+
+    if not isinstance(questions, list):
+        questions = []
+
+    details_form = LessonDetailsForm(
+        initial={
+            "title": lesson.title,
+            "learning_notes": lesson.learning_notes,
+            "teaching_notes": lesson.teaching_notes,
+        }
+    )
+
+    section_form = LessonSectionForm()
+    question_form = LessonQuestionForm()
+
+    if request.method == "POST":
+        form_type = request.POST.get("form_type")
+        if form_type == "add_section":
+            section_form = LessonSectionForm(request.POST)
+
+            if section_form.is_valid():
+                sections.append({
+                    "heading": section_form.cleaned_data["heading"],
+                    "content": section_form.cleaned_data["content"],
+                })
+
+                content["sections"] = sections
+                lesson.presentation_content = content
+                lesson.save(
+                    update_fields=["presentation_content", "updated_at"]
+                )
+
+                messages.success(request, "Lesson section added.")
+                return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        elif form_type == "add_question":
+            question_form = LessonQuestionForm(request.POST)
+
+            if question_form.is_valid():
+                cleaned = question_form.cleaned_data
+                options = [
+                    option.strip()
+                    for option in cleaned["options"].splitlines()
+                    if option.strip()
+                ]
+
+                questions.append({
+                    "question": cleaned["question"],
+                    "question_type": cleaned["question_type"],
+                    "options": options,
+                    "answer": cleaned["answer"],
+                    "explanation": cleaned["explanation"],
+                    "hint": cleaned["hint"],
+                    "section_heading": cleaned["section_heading"],
+                })
+
+                content["questions"] = questions
+                lesson.presentation_content = content
+                lesson.save(
+                    update_fields=["presentation_content", "updated_at"]
+                )
+
+                messages.success(request, "Quiz question added.")
+                return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        elif form_type == "details":
+
+        
+            details_form = LessonDetailsForm(request.POST)
+
+            if details_form.is_valid():
+                lesson.title = details_form.cleaned_data["title"]
+                lesson.learning_notes = (
+                    details_form.cleaned_data["learning_notes"]
+                )
+                lesson.teaching_notes = (
+                    details_form.cleaned_data["teaching_notes"]
+                )
+
+                lesson.save(
+                    update_fields=[
+                        "title",
+                        "learning_notes",
+                        "teaching_notes",
+                        "updated_at",
+                    ]
+                )
+
+                messages.success(request, "Lesson details updated.")
+                return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        elif form_type == "section":
+            try:
+                index = int(request.POST.get("index", ""))
+            except (TypeError, ValueError):
+                raise Http404
+
+            if index < 0 or index >= len(sections):
+                raise Http404
+
+            section_form = LessonSectionForm(request.POST)
+
+            if section_form.is_valid():
+                sections[index] = {
+                    **(
+                        sections[index]
+                        if isinstance(sections[index], dict)
+                        else {}
+                    ),
+                    "heading": section_form.cleaned_data["heading"],
+                    "content": section_form.cleaned_data["content"],
+                }
+
+                content["sections"] = sections
+                lesson.presentation_content = content
+                lesson.save(
+                    update_fields=["presentation_content", "updated_at"]
+                )
+
+                messages.success(request, "Lesson section updated.")
+                return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        elif form_type == "question":
+            try:
+                index = int(request.POST.get("index", ""))
+            except (TypeError, ValueError):
+                raise Http404
+
+            if index < 0 or index >= len(questions):
+                raise Http404
+
+            question_form = LessonQuestionForm(request.POST)
+
+            if question_form.is_valid():
+                cleaned = question_form.cleaned_data
+                options = [
+                    option.strip()
+                    for option in cleaned["options"].splitlines()
+                    if option.strip()
+                ]
+
+                questions[index] = {
+                    **(
+                        questions[index]
+                        if isinstance(questions[index], dict)
+                        else {}
+                    ),
+                    "question": cleaned["question"],
+                    "question_type": cleaned["question_type"],
+                    "options": options,
+                    "answer": cleaned["answer"],
+                    "explanation": cleaned["explanation"],
+                    "hint": cleaned["hint"],
+                    "section_heading": cleaned["section_heading"],
+                }
+
+                content["questions"] = questions
+                lesson.presentation_content = content
+                lesson.save(
+                    update_fields=["presentation_content", "updated_at"]
+                )
+
+                messages.success(request, "Quiz question updated.")
+                return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        else:
+            raise Http404
+
+    section_forms = []
+    for index, section in enumerate(sections):
+        if not isinstance(section, dict):
+            continue
+
+        section_forms.append({
+            "index": index,
+            "form": (
+                section_form
+                if request.method == "POST"
+                and request.POST.get("form_type") == "section"
+                and request.POST.get("index") == str(index)
+                else LessonSectionForm(
+                    initial={
+                        "heading": section.get("heading", ""),
+                        "content": section.get("content", ""),
+                    }
+                )
+            ),
+        })
+
+    question_forms = []
+    for index, question in enumerate(questions):
+        if not isinstance(question, dict):
+            continue
+
+        question_forms.append({
+            "index": index,
+            "form": (
+                question_form
+                if request.method == "POST"
+                and request.POST.get("form_type") == "question"
+                and request.POST.get("index") == str(index)
+                else LessonQuestionForm(
+                    initial={
+                        "question": question.get("question", ""),
+                        "question_type": question.get(
+                            "question_type",
+                            "multiple_choice",
+                        ),
+                        "options": "\n".join(
+                            question.get("options", [])
+                            if isinstance(question.get("options", []), list)
+                            else []
+                        ),
+                        "answer": question.get("answer", ""),
+                        "explanation": question.get("explanation", ""),
+                        "hint": question.get("hint", ""),
+                        "section_heading": question.get(
+                            "section_heading", ""
+                        ),
+                    }
+                )
+            ),
+        })
+
+    return render(
+        request,
+        "core/lessons/edit_lesson.html",
+        {
+            "lesson": lesson,
+            "details_form": details_form,
+            "section_forms": section_forms,
+            "question_forms": question_forms,
+            "section_form": section_form,
+            "question_form": question_form,
         },
     )

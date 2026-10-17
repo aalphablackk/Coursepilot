@@ -200,3 +200,98 @@ class GenerationForm(forms.Form):
                     self.add_error(field_name, error_message)
 
         return cleaned_data
+
+class LessonDetailsForm(forms.Form):
+    title = forms.CharField(
+        max_length=250,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+        }),
+    )
+
+    learning_notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 5,
+        }),
+    )
+
+    teaching_notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 5,
+        }),
+    )
+
+
+class LessonSectionForm(forms.Form):
+    heading = forms.CharField(
+        max_length=250,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Section heading",
+        }),
+    )
+
+    content = forms.CharField(
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 8,
+        }),
+    )
+
+
+class LessonQuestionForm(forms.Form):
+    question = forms.CharField(
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 3,
+        }),
+    )
+
+    question_type = forms.CharField(
+        required=False,
+        initial="multiple_choice",
+        widget=forms.HiddenInput(),
+    )
+
+    options = forms.CharField(
+        required=False,
+        help_text="Enter one answer option per line.",
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 4,
+            "placeholder": "Option A\nOption B\nOption C\nOption D",
+        }),
+    )
+
+    answer = forms.CharField(
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+        }),
+    )
+
+    explanation = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 3,
+        }),
+    )
+
+    hint = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+        }),
+    )
+
+    section_heading = forms.CharField(
+        required=False,
+        max_length=250,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+        }),
+    )
