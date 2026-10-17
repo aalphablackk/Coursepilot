@@ -806,7 +806,41 @@ def edit_lesson(request, lesson_id):
 
     if request.method == "POST":
         form_type = request.POST.get("form_type")
-        if form_type == "add_section":
+        if form_type == "move_section":
+            try:
+                index = int(request.POST.get("index", ""))
+                direction = request.POST.get("direction", "")
+            except (TypeError, ValueError):
+                raise Http404
+
+            if index < 0 or index >= len(sections):
+                raise Http404
+
+            if direction == "up" and index > 0:
+                target_index = index - 1
+            elif direction == "down" and index < len(sections) - 1:
+                target_index = index + 1
+            else:
+                return redirect(
+                    "core:edit_lesson",
+                    lesson_id=lesson.id,
+                )
+
+            sections[index], sections[target_index] = (
+                sections[target_index],
+                sections[index],
+            )
+
+            content["sections"] = sections
+            lesson.presentation_content = content
+            lesson.save(
+                update_fields=["presentation_content", "updated_at"]
+            )
+
+            messages.success(request, "Lesson section order updated.")
+            return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        elif form_type == "add_section":
             section_form = LessonSectionForm(request.POST)
 
             if section_form.is_valid():
@@ -855,8 +889,6 @@ def edit_lesson(request, lesson_id):
                 return redirect("core:edit_lesson", lesson_id=lesson.id)
 
         elif form_type == "details":
-
-        
             details_form = LessonDetailsForm(request.POST)
 
             if details_form.is_valid():
@@ -879,7 +911,46 @@ def edit_lesson(request, lesson_id):
 
                 messages.success(request, "Lesson details updated.")
                 return redirect("core:edit_lesson", lesson_id=lesson.id)
+        
+        elif form_type == "delete_question":
+            try:
+                index = int(request.POST.get("index", ""))
+            except (TypeError, ValueError):
+                raise Http404
 
+            if index < 0 or index >= len(questions):
+                raise Http404
+
+            questions.pop(index)
+
+            content["questions"] = questions
+            lesson.presentation_content = content
+            lesson.save(
+                update_fields=["presentation_content", "updated_at"]
+            )
+
+            messages.success(request, "Quiz question deleted.")
+            return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        elif form_type == "delete_section":
+            try:
+                index = int(request.POST.get("index", ""))
+            except (TypeError, ValueError):
+                raise Http404
+
+            if index < 0 or index >= len(sections):
+                raise Http404
+
+            sections.pop(index)
+
+            content["sections"] = sections
+            lesson.presentation_content = content
+            lesson.save(
+                update_fields=["presentation_content", "updated_at"]
+            )
+
+            messages.success(request, "Lesson section deleted.")
+            return redirect("core:edit_lesson", lesson_id=lesson.id)
         elif form_type == "section":
             try:
                 index = int(request.POST.get("index", ""))
@@ -910,6 +981,34 @@ def edit_lesson(request, lesson_id):
 
                 messages.success(request, "Lesson section updated.")
                 return redirect("core:edit_lesson", lesson_id=lesson.id)
+        elif form_type == "move_question":
+            try:
+                index = int(request.POST.get("index", ""))
+            except (TypeError, ValueError):
+                raise Http404
+            direction = request.POST.get("direction", "")
+            if index < 0 or index >= len(questions):
+                raise Http404
+            if direction == "up" and index > 0:
+                target_index = index - 1
+            elif direction == "down" and index < len(questions) - 1:
+                target_index = index + 1
+            else:
+                return redirect(
+                    "core:edit_lesson",
+                    lesson_id=lesson.id,
+                )
+            questions[index], questions[target_index] = (
+                questions[target_index],
+                questions[index],
+            )
+            content["questions"] = questions
+            lesson.presentation_content = content
+            lesson.save(
+                update_fields=["presentation_content", "updated_at"]
+            )
+            messages.success(request, "Quiz question order updated.")
+            return redirect("core:edit_lesson", lesson_id=lesson.id)
 
         elif form_type == "question":
             try:
