@@ -17,17 +17,28 @@ class GenerationValidationTests(SimpleTestCase):
     def test_quick_lesson_requires_objectives(self):
         output = LessonOutput(
             title="Python",
-            sections=[LessonSection("Introduction", "Python basics.")],
+            sections=[
+                LessonSection(
+                    "Introduction",
+                    "Python is a programming language.",
+                )
+            ],
         )
 
         with self.assertRaises(GenerationOutputError):
-            validate_generation_output(output, mode="quick_lesson")
+            validate_generation_output(
+                output,
+                mode="quick_lesson",
+            )
 
     def test_presentation_requires_slides(self):
         output = LessonOutput(title="Networking")
 
         with self.assertRaises(GenerationOutputError):
-            validate_generation_output(output, mode="presentation")
+            validate_generation_output(
+                output,
+                mode="presentation",
+            )
 
     def test_valid_presentation_is_accepted(self):
         output = LessonOutput(
@@ -35,14 +46,27 @@ class GenerationValidationTests(SimpleTestCase):
             presentation_slides=[
                 PresentationSlide(
                     title="Introduction",
-                    bullet_points=["What is a network?"],
-                    speaker_notes="Introduce the topic.",
+                    bullet_points=[
+                        (
+                            "A computer network connects devices "
+                            "so they can communicate and share resources."
+                        ),
+                        (
+                            "Networks use communication protocols "
+                            "to define how devices exchange information."
+                        ),
+                    ],
+                    speaker_notes=(
+                        "Introduce computer networks and explain "
+                        "how connected devices communicate."
+                    ),
                 )
             ],
         )
 
         result = validate_generation_output(
-            output, mode="presentation"
+            output,
+            mode="presentation",
         )
 
         self.assertIs(result, output)
@@ -59,7 +83,14 @@ class GenerationValidationTests(SimpleTestCase):
                             session_number=1,
                             title="Introduction",
                             topic="Python basics",
-                            learning_objectives=["Explain Python."],
+                            learning_objectives=[
+                                "Explain the purpose of Python."
+                            ],
+                            content=(
+                                "Python is a programming language "
+                                "used to build applications, automate "
+                                "tasks, and analyze data."
+                            ),
                         )
                     ],
                 )
@@ -84,12 +115,38 @@ class GenerationValidationTests(SimpleTestCase):
                 session_number = (
                     (week_number - 1) * 2 + class_number
                 )
+
                 sessions.append(
                     CourseSession(
                         session_number=session_number,
                         title=f"Class {session_number}",
                         topic=f"Topic {session_number}",
-                        learning_objectives=["Explain the topic."],
+                        learning_objectives=[
+                            (
+                                f"Explain the main concepts of "
+                                f"topic {session_number}."
+                            )
+                        ],
+                        content=(
+                            f"Topic {session_number} introduces "
+                            "important concepts and explains how "
+                            "they are used in practical situations. "
+                            "Learners examine the underlying ideas "
+                            "and how these ideas relate to the topic."
+                        ),
+                        sections=[
+                            LessonSection(
+                                heading=f"Understanding topic {session_number}",
+                                content=(
+                                    f"Topic {session_number} can be "
+                                    "understood by examining its "
+                                    "main principles and practical "
+                                    "applications. These principles "
+                                    "help learners understand how "
+                                    "the topic works."
+                                ),
+                            )
+                        ],
                     )
                 )
 
@@ -127,7 +184,14 @@ class GenerationValidationTests(SimpleTestCase):
                             session_number=2,
                             title="Introduction",
                             topic="Python basics",
-                            learning_objectives=["Explain Python."],
+                            learning_objectives=[
+                                "Explain the purpose of Python."
+                            ],
+                            content=(
+                                "Python is a programming language "
+                                "used to build applications and "
+                                "automate repetitive tasks."
+                            ),
                         )
                     ],
                 )

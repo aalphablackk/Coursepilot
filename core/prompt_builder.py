@@ -86,23 +86,53 @@ MODE_OUTPUT_REQUIREMENTS = {
   unsupported claims.
 """,
     "presentation": """
-- Populate presentation_slides with an ordered list of complete slide objects.
-- Each slide must have a meaningful title, concise bullet_points, and useful
-  speaker_notes that expand on the bullets with explanations and delivery cues.
-- Start with an opening that establishes the topic and purpose. Build ideas
-  progressively, explain important concepts, use examples where helpful, and
-  finish with a recap or conclusion.
-- Avoid overcrowded slides, vague bullets, repetitive slides, and slides
-  containing only a heading without useful content.
-- Put fuller explanations, transitions, examples, questions for the audience,
-  and clarification of difficult concepts in speaker_notes as appropriate.
-- Match the slide count and depth to the session duration and subject.
-- Keep learning objectives, slide content, key points, and the conclusion
-  consistent with one another.
-- Include a meaningful audience interaction or check for understanding when
-  appropriate. Do not force activities into topics where they add no value.
-- Populate the other applicable fields consistently; do not rely on the slides
-  alone if the selected notes format requires separate learning or teaching notes.
+- Populate presentation_slides with an ordered sequence of substantive,
+  learner-facing slides that teach the requested subject directly.
+- Every slide must communicate actual knowledge. Never use teacher directions,
+  lesson-planning instructions, or generic statements as the visible slide
+  content. Avoid phrases such as "Discuss...", "Explain...", "Introduce...",
+  "Ask learners to...", and "Tell students...".
+- Write slide titles that communicate the specific idea being taught, not
+  merely a broad topic label. Prefer "How Previewing Improves Reading"
+  over "Reading Strategies".
+- Make every bullet point informative and meaningful on its own. Include
+  definitions, explanations, mechanisms, distinctions, evidence, steps,
+  consequences, or specific examples as appropriate to the subject.
+- Develop concepts sufficiently for the intended learner level. Do not
+  reduce complex ideas to unexplained keywords or vague one-line statements.
+  Explain technical terms when they first appear.
+- Give each slide one central teaching purpose. Include enough supporting
+  detail to make that idea understandable without overcrowding the slide.
+- Use specific examples to demonstrate how a concept works. Prefer a worked
+  example, a concrete scenario, a comparison, or an application over a
+  generic instruction to provide an example.
+- Where relevant, explain relationships between concepts, causes and effects,
+  similarities and differences, sequences, processes, and practical uses.
+- Build a logical teaching sequence: establish the topic, explain foundational
+  concepts, develop the important ideas, demonstrate their use, address
+  relevant misconceptions or challenges, and conclude with meaningful takeaways.
+  Adapt this sequence to the subject instead of forcing irrelevant sections.
+- Make the number and depth of slides appropriate for the session duration.
+  Cover the important learning goals without padding the presentation with
+  repetitive slides or unnecessary introductory material.
+- Use concise, complete statements. Bullets may contain more than a short
+  phrase when necessary to communicate a meaningful explanation.
+- Keep learner-facing slide content separate from instructor guidance.
+  Put delivery instructions, suggested wording, demonstrations to perform,
+  transitions, and facilitation tips in speaker_notes.
+- Speaker notes must expand on the actual slide content with accurate
+  explanations, useful context, examples, or teaching guidance. Do not merely
+  repeat the bullets or use notes to compensate for empty slides.
+- Include examples, short applications, audience questions, or knowledge
+  checks when they meaningfully support the learning goals. Any question
+  displayed on a slide must be relevant to the material already taught or
+  clearly serve as an opening question.
+- End with a substantive recap of the concepts learners should understand,
+  rather than a generic statement that the lesson is complete.
+- Ensure slide content, learning objectives, examples, and conclusion are
+  consistent with the topic, learner level, and requested detail.
+- Populate the other applicable fields consistently. Do not rely on slides
+  alone when the selected notes format requires separate learning or teaching notes.
 """,
     "custom_content": """
 - Apply the selected action: organize, simplify, expand, or improve. Do not
@@ -150,6 +180,52 @@ MODE_OUTPUT_REQUIREMENTS = {
 """,
 }
 
+CONTENT_VS_INSTRUCTIONS_RULE = """
+CONTENT MUST BE WRITTEN, NOT MERELY REQUESTED:
+
+- Generate the actual educational content requested. Do not tell the
+  instructor, learner, or another writer what content to create instead
+  of creating it yourself.
+
+- In learner-facing fields, write the actual explanations, definitions,
+  examples, procedures, answers, activities, and conclusions.
+
+- Never use placeholders or content-generation directions such as:
+  "Explain the topic here", "Discuss the following", "Add examples",
+  "Introduce the concept", "Provide a detailed explanation",
+  "Include relevant facts", or "Ask students to research this topic".
+
+- Do not replace substantive content with instructions such as
+  "The instructor should explain...", "Students will learn about...",
+  or "The teacher should discuss..." when the actual explanation
+  or information can be provided directly.
+
+- When teaching a concept, teach it directly. When an example is needed,
+  provide the example. When a question is required, write the question
+  and its answer. When an activity is required, provide a complete,
+  actionable activity with clear steps and an expected outcome.
+
+- This rule applies to every generation mode, including quick lessons,
+  summaries, presentations, custom content, and full courses.
+
+- EXCEPTION: Instructor-facing fields such as teaching_notes and
+  speaker_notes may contain delivery instructions, teaching cues,
+  suggested questions, and facilitation guidance. These must support
+  substantive educational content, not replace it.
+
+- For summaries, preserve the source's meaning rather than inventing
+  missing information. If the source lacks information, state the
+  limitation instead of filling the gap with a placeholder.
+
+- For presentations, learner-facing slides must contain actual teaching
+  content. Put delivery instructions in speaker_notes.
+
+- Before returning the result, check every applicable content field.
+  Replace placeholders, generic directives, and incomplete instructions
+  with the actual content. Keep legitimate instructor guidance only
+  in instructor-facing fields.
+"""
+
 
 OUTPUT_CONTRACT = """
 Return exactly one valid JSON object using the following fields and data types.
@@ -168,7 +244,7 @@ meaningful content. Do not satisfy requirements using empty placeholders.
   "key_points": ["string"],
   "examples": ["string"],
   "fun_facts": ["string"],
-  
+
 "questions": [
     {
         "question": "string",
@@ -249,8 +325,16 @@ CONTENT QUALITY RULES:
 - Respect the requested detail level without sacrificing essential understanding.
 - Learner level controls the complexity of the material; detail level controls
   the depth and amount of explanation. Do not confuse the two.
-- Do not use the em dash character (—) anywhere in generated content.
+- Do not use em dash punctuation anywhere in generated content.
   Use commas, colons, semicolons, or regular hyphens where appropriate.
+- Do not substitute instructions for the actual requested content in any
+  learner-facing field. Generate the explanation, example, answer, or
+  other content directly.
+- Reject placeholders, drafting directions, and generic teaching commands
+  when substantive content is required.
+- Permit instructional directions only where they serve a legitimate
+  purpose, such as activity instructions, assignment requirements,
+  teaching_notes, or speaker_notes.
 
 QUESTION RULES:
 
@@ -450,7 +534,11 @@ def build_generation_prompt(data: dict[str, Any]) -> str:
             "when no research results were provided.",
         ])
 
+
     instructions.extend([
+        "",
+        "GLOBAL CONTENT QUALITY RULE:",
+        CONTENT_VS_INSTRUCTIONS_RULE,
         "",
         "MODE-SPECIFIC OUTPUT REQUIREMENTS:",
         MODE_OUTPUT_REQUIREMENTS[mode],
@@ -458,5 +546,6 @@ def build_generation_prompt(data: dict[str, Any]) -> str:
         "OUTPUT REQUIREMENTS:",
         OUTPUT_CONTRACT,
     ])
+
 
     return "\n".join(instructions)

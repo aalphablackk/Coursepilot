@@ -1,12 +1,14 @@
 # from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect,get_object_or_404
-from django.http import Http404
+from django.http import Http404,HttpResponse
 from .forms import (
     GenerationForm,
     LessonDetailsForm,
     LessonSectionForm,
     LessonQuestionForm,
 )
+import random
+from django.views.decorators.http import require_POST
 from .models import Lesson
 from .services import generate_lesson, LessonGenerationError
 from django.db.models import Q
@@ -22,6 +24,18 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 import logging
+from io import BytesIO
+from docx import Document
+from docx.shared import Inches, Pt
+from pptx import Presentation
+from pptx.util import Inches as PptxInches, Pt as PptxPt
+
+from pptx.enum.text import PP_ALIGN
+from pptx.dml.color import RGBColor
+
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -1124,3 +1138,766 @@ def edit_lesson(request, lesson_id):
             "question_form": question_form,
         },
     )
+
+# @login_required
+@require_POST
+def delete_lesson(request, lesson_id):
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id,
+        creator=request.user,
+    )
+
+    course_id = lesson.course_id
+    outline_item = lesson.outline_item
+
+    # Allow a deleted course session to be generated again.
+    if outline_item:
+        outline_item.status = CourseOutlineItem.Status.PLANNED
+        outline_item.approved_at = None
+        outline_item.generation_error = ""
+        outline_item.save(
+            update_fields=[
+                "status",
+                "approved_at",
+                "generation_error",
+                "updated_at",
+            ]
+        )
+
+    lesson.delete()
+    messages.success(request, "Lesson deleted successfully.")
+
+    if course_id:
+        return redirect("core:course_outline", course_id=course_id)
+
+    return redirect("core:library")
+
+
+# @login_required
+@require_POST
+def delete_course(request, course_id):
+    course = get_object_or_404(
+        Course,
+        id=course_id,
+        creator=request.user,
+    )
+
+    course.delete()
+    messages.success(
+        request,
+        "Course and its associated lessons and outline deleted.",
+    )
+
+    return redirect("core:library")
+
+def export_lesson_docx(request, lesson_id):
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+
+    document = Document()
+    document.add_heading(
+        lesson.title or lesson.topic or "Lesson Notes",
+        0,
+    )
+
+    if lesson.topic:
+        document.add_paragraph(f"Topic: {lesson.topic}")
+
+    document.add_paragraph(
+        f"Learner level: {lesson.get_learner_level_display()}"
+    )
+    document.add_paragraph(f"Duration: {lesson.duration_minutes} minutes")
+
+    content = lesson.presentation_content or {}
+
+    def add_text(value):
+        """Add readable text without exposing raw dictionaries."""
+        if value is None:
+            return
+
+        if isinstance(value, str):
+            if value.strip():
+                document.add_paragraph(value.strip())
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    add_structured_item(item)
+                else:
+                    add_text(item)
+
+    def add_bullets(items):
+        for item in items:
+            if isinstance(item, dict):
+                add_structured_item(item)
+            else:
+                document.add_paragraph(str(item), style="List Bullet")
+
+    def add_structured_item(item):
+        """Format known content fields instead of printing dictionaries."""
+        if not isinstance(item, dict):
+            add_text(item)
+            return
+
+        heading = (
+            item.get("heading")
+            or item.get("title")
+            or item.get("question")
+        )
+
+        if heading:
+            document.add_heading(str(heading), level=2)
+
+        for key, value in item.items():
+            if key in {"heading", "title", "question"}:
+                continue
+
+            if key in {"content", "instructions", "explanation",
+                       "speaker_notes", "activity", "assignment"}:
+                add_text(value)
+
+            elif key in {"options", "bullet_points", "learning_objectives",
+                         "learning_goals"}:
+                add_bullets(value if isinstance(value, list) else [value])
+
+            elif key == "answer":
+                paragraph = document.add_paragraph()
+                paragraph.add_run("Answer: ").bold = True
+                paragraph.add_run(str(value))
+
+            elif key == "hint":
+                paragraph = document.add_paragraph()
+                paragraph.add_run("Hint: ").bold = True
+                paragraph.add_run(str(value))
+
+            elif key == "sessions" and isinstance(value, list):
+                for session in value:
+                    add_structured_item(session)
+
+            elif key in {"week_number", "session_number"}:
+                continue
+
+    if lesson.learning_notes:
+        document.add_heading("Lesson Content", level=1)
+        document.add_paragraph(lesson.learning_notes)
+
+    # Read the structured content using known content categories.
+    if isinstance(content, dict):
+        sections = content.get("sections", [])
+        if sections:
+            document.add_heading("Lesson Sections", level=1)
+            add_bullets(sections)
+
+        objectives = content.get("learning_objectives", [])
+        if objectives:
+            document.add_heading("Learning Objectives", level=1)
+            add_bullets(objectives)
+
+        for key, heading in [
+            ("key_points", "Key Points"),
+            ("examples", "Examples"),
+            ("fun_facts", "Fun Facts"),
+        ]:
+            items = content.get(key, [])
+            if items:
+                document.add_heading(heading, level=1)
+                add_bullets(items)
+
+        questions = content.get("questions", [])
+        if questions:
+            document.add_heading("Review Questions", level=1)
+            for index, question in enumerate(questions, start=1):
+                document.add_paragraph(
+                    f"{index}. {question.get('question', 'Question')}"
+                )
+                for option in question.get("options", []):
+                    document.add_paragraph(
+                        str(option),
+                        style="List Bullet",
+                    )
+                if question.get("answer"):
+                    paragraph = document.add_paragraph()
+                    paragraph.add_run("Answer: ").bold = True
+                    paragraph.add_run(str(question["answer"]))
+                if question.get("explanation"):
+                    paragraph = document.add_paragraph()
+                    paragraph.add_run("Explanation: ").bold = True
+                    paragraph.add_run(str(question["explanation"]))
+
+        activities = content.get("activities", [])
+        if activities:
+            document.add_heading("Activities", level=1)
+            add_bullets(activities)
+
+        assignment = content.get("assignment")
+        if assignment:
+            document.add_heading("Assignment", level=1)
+            add_text(assignment)
+
+        conclusion = content.get("conclusion")
+        if conclusion:
+            document.add_heading("Conclusion", level=1)
+            add_text(conclusion)
+
+    if lesson.teaching_notes:
+        document.add_heading("Teaching Notes", level=1)
+        document.add_paragraph(lesson.teaching_notes)
+
+    buffer = BytesIO()
+    document.save(buffer)
+    buffer.seek(0)
+
+    filename = f"coursepilot_lesson_{lesson.id}.docx"
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.document"
+        ),
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{filename}"'
+    )
+
+    return response
+
+def export_lesson_pptx(request, lesson_id):
+    import random
+    from io import BytesIO
+
+    from django.http import Http404, HttpResponse
+    from django.shortcuts import get_object_or_404
+    from pptx import Presentation
+    from pptx.dml.color import RGBColor
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+    from pptx.util import Inches as PptxInches, Pt as PptxPt
+
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+
+    # Preserve the existing access rules.
+    if lesson.creator_id and lesson.creator_id != (
+        request.user.id if request.user.is_authenticated else None
+    ):
+        raise Http404
+
+    if lesson.generation_status != Lesson.GenerationStatus.COMPLETED:
+        raise Http404
+
+    content = lesson.presentation_content
+    if not isinstance(content, dict):
+        content = {}
+
+    presentation = Presentation()
+    presentation.slide_width = PptxInches(13.333)
+    presentation.slide_height = PptxInches(7.5)
+
+    # Select a random theme for each download.
+    themes = [
+        {
+            "name": "Academic Blue",
+            "cover": (25, 43, 72),
+            "accent": (48, 100, 190),
+            "title": (25, 43, 72),
+            "body": (45, 52, 64),
+            "muted": (105, 115, 130),
+            "light": (239, 244, 250),
+            "background": (255, 255, 255),
+            "cover_text": (220, 229, 243),
+        },
+        {
+            "name": "Forest & Cream",
+            "cover": (35, 65, 54),
+            "accent": (69, 125, 94),
+            "title": (35, 65, 54),
+            "body": (55, 60, 53),
+            "muted": (112, 120, 107),
+            "light": (226, 233, 218),
+            "background": (250, 248, 239),
+            "cover_text": (224, 237, 224),
+        },
+        {
+            "name": "Charcoal & Amber",
+            "cover": (39, 42, 48),
+            "accent": (232, 160, 55),
+            "title": (39, 42, 48),
+            "body": (57, 59, 64),
+            "muted": (115, 117, 123),
+            "light": (239, 231, 216),
+            "background": (255, 253, 248),
+            "cover_text": (245, 224, 185),
+        },
+        {
+            "name": "Modern Teal",
+            "cover": (25, 62, 69),
+            "accent": (29, 145, 145),
+            "title": (25, 62, 69),
+            "body": (44, 58, 62),
+            "muted": (100, 119, 123),
+            "light": (222, 239, 237),
+            "background": (248, 252, 251),
+            "cover_text": (210, 236, 234),
+        },
+        {
+            "name": "Royal Purple",
+            "cover": (54, 43, 82),
+            "accent": (125, 91, 190),
+            "title": (54, 43, 82),
+            "body": (54, 53, 65),
+            "muted": (112, 108, 130),
+            "light": (235, 229, 246),
+            "background": (252, 250, 255),
+            "cover_text": (229, 218, 249),
+        },
+    ]
+
+    theme = random.choice(themes)
+
+    def color(key):
+        return RGBColor(*theme[key])
+
+    COVER = color("cover")
+    ACCENT = color("accent")
+    TITLE = color("title")
+    BODY = color("body")
+    MUTED = color("muted")
+    LIGHT = color("light")
+    BACKGROUND = color("background")
+    COVER_TEXT = color("cover_text")
+    WHITE = RGBColor(255, 255, 255)
+
+    TITLE_SIZE = 30
+    BODY_SIZE = 21
+
+    def clean_text(value):
+        if value is None or isinstance(value, (dict, list)):
+            return ""
+        return str(value).strip()
+
+    def get_items(key):
+        value = content.get(key, [])
+        if not isinstance(value, list):
+            value = [value] if value else []
+
+        result = []
+        for item in value:
+            if isinstance(item, dict):
+                text = clean_text(item.get("description", ""))
+            else:
+                text = clean_text(item)
+
+            if text:
+                result.append(text)
+
+        return result
+
+    def add_notes(slide, notes=""):
+        notes = clean_text(notes)
+        if not notes:
+            return
+
+        try:
+            notes_frame = slide.notes_slide.notes_text_frame
+            if notes_frame is not None:
+                notes_frame.text = notes
+        except (AttributeError, NotImplementedError):
+            pass
+
+    def add_footer(slide):
+        line = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            PptxInches(0.6),
+            PptxInches(7.05),
+            PptxInches(12.13),
+            PptxInches(0.025),
+        )
+        line.fill.solid()
+        line.fill.fore_color.rgb = LIGHT
+        line.line.fill.background()
+
+        footer = slide.shapes.add_textbox(
+            PptxInches(0.65),
+            PptxInches(7.1),
+            PptxInches(12),
+            PptxInches(0.22),
+        )
+        frame = footer.text_frame
+        frame.word_wrap = False
+
+        paragraph = frame.paragraphs[0]
+        paragraph.text = "COURSEPILOT  |  LESSON PRESENTATION"
+        paragraph.font.name = "Aptos"
+        paragraph.font.size = PptxPt(9)
+        paragraph.font.color.rgb = MUTED
+
+        paragraph = frame.add_paragraph()
+        paragraph.text = f"{len(presentation.slides):02d}"
+        paragraph.alignment = PP_ALIGN.RIGHT
+        paragraph.font.name = "Aptos"
+        paragraph.font.size = PptxPt(9)
+        paragraph.font.color.rgb = MUTED
+
+    def add_accent(slide, x, y, width, height=0.06):
+        shape = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            PptxInches(x),
+            PptxInches(y),
+            PptxInches(width),
+            PptxInches(height),
+        )
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = ACCENT
+        shape.line.fill.background()
+
+    def add_cover():
+        slide = presentation.slides.add_slide(
+            presentation.slide_layouts[6]
+        )
+        slide.background.fill.solid()
+        slide.background.fill.fore_color.rgb = COVER
+
+        # Decorative accent blocks.
+        add_accent(slide, 0.9, 1.05, 1.1, 0.09)
+        add_accent(slide, 10.9, 5.8, 1.3, 0.09)
+
+        title_box = slide.shapes.add_textbox(
+            PptxInches(0.95),
+            PptxInches(1.5),
+            PptxInches(11.3),
+            PptxInches(1.8),
+        )
+        frame = title_box.text_frame
+        frame.word_wrap = True
+        frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+        title = frame.paragraphs[0]
+        title.text = (
+            clean_text(lesson.title or lesson.topic) or "Lesson"
+        )
+        title.font.name = "Aptos Display"
+        title.font.size = PptxPt(36)
+        title.font.bold = True
+        title.font.color.rgb = WHITE
+
+        topic = clean_text(lesson.topic)
+        if topic and topic != clean_text(lesson.title):
+            subtitle = frame.add_paragraph()
+            subtitle.text = topic
+            subtitle.font.name = "Aptos"
+            subtitle.font.size = PptxPt(20)
+            subtitle.font.color.rgb = COVER_TEXT
+            subtitle.space_before = PptxPt(12)
+
+        try:
+            level = lesson.get_learner_level_display()
+        except (AttributeError, TypeError):
+            level = clean_text(lesson.learner_level)
+
+        details = []
+        if level:
+            details.append(f"Learner level: {level}")
+        if lesson.duration_minutes:
+            details.append(
+                f"Duration: {lesson.duration_minutes} minutes"
+            )
+
+        detail_box = slide.shapes.add_textbox(
+            PptxInches(0.98),
+            PptxInches(4.25),
+            PptxInches(10.8),
+            PptxInches(1.1),
+        )
+        detail_frame = detail_box.text_frame
+        detail_frame.word_wrap = True
+
+        for index, item in enumerate(details):
+            paragraph = (
+                detail_frame.paragraphs[0]
+                if index == 0
+                else detail_frame.add_paragraph()
+            )
+            paragraph.text = item
+            paragraph.font.name = "Aptos"
+            paragraph.font.size = PptxPt(16)
+            paragraph.font.color.rgb = COVER_TEXT
+            paragraph.space_after = PptxPt(9)
+
+        brand = slide.shapes.add_textbox(
+            PptxInches(0.98),
+            PptxInches(6.45),
+            PptxInches(6),
+            PptxInches(0.4),
+        )
+        paragraph = brand.text_frame.paragraphs[0]
+        paragraph.text = "Prepared with CoursePilot"
+        paragraph.font.name = "Aptos"
+        paragraph.font.size = PptxPt(12)
+        paragraph.font.color.rgb = COVER_TEXT
+
+        add_notes(slide, content.get("introduction", ""))
+
+    def add_content_slide(title, items, notes=""):
+        items = [
+            clean_text(item)
+            for item in items
+            if clean_text(item)
+        ]
+        if not items:
+            return
+
+        # Split long text into readable chunks.
+        paragraphs = []
+        for item in items:
+            words = item.split()
+            chunk = ""
+
+            for word in words:
+                candidate = f"{chunk} {word}".strip()
+                if len(candidate) > 240 and chunk:
+                    paragraphs.append(chunk)
+                    chunk = word
+                else:
+                    chunk = candidate
+
+            if chunk:
+                paragraphs.append(chunk)
+
+        # No more than five content items per slide.
+        groups = [
+            paragraphs[index:index + 5]
+            for index in range(0, len(paragraphs), 5)
+        ]
+
+        for group_index, group in enumerate(groups, start=1):
+            slide = presentation.slides.add_slide(
+                presentation.slide_layouts[6]
+            )
+            slide.background.fill.solid()
+            slide.background.fill.fore_color.rgb = BACKGROUND
+
+            # A slim accent panel gives each theme its identity.
+            add_accent(slide, 0, 0, 0.12, 7.5)
+
+            title_box = slide.shapes.add_textbox(
+                PptxInches(0.75),
+                PptxInches(0.45),
+                PptxInches(11.8),
+                PptxInches(0.85),
+            )
+            title_frame = title_box.text_frame
+            title_frame.word_wrap = True
+
+            heading = title_frame.paragraphs[0]
+            heading.text = (
+                f"{clean_text(title)} ({group_index})"
+                if len(groups) > 1
+                else clean_text(title) or "Lesson Content"
+            )
+            heading.font.name = "Aptos Display"
+            heading.font.size = PptxPt(TITLE_SIZE)
+            heading.font.bold = True
+            heading.font.color.rgb = TITLE
+
+            add_accent(slide, 0.78, 1.38, 1.05)
+
+            body_box = slide.shapes.add_textbox(
+                PptxInches(0.9),
+                PptxInches(1.75),
+                PptxInches(11.45),
+                PptxInches(4.95),
+            )
+            frame = body_box.text_frame
+            frame.clear()
+            frame.word_wrap = True
+            frame.vertical_anchor = MSO_ANCHOR.TOP
+            frame.margin_left = PptxInches(0.12)
+            frame.margin_right = PptxInches(0.12)
+            frame.margin_top = PptxInches(0.08)
+            frame.margin_bottom = PptxInches(0.08)
+
+            for index, item in enumerate(group):
+                paragraph = (
+                    frame.paragraphs[0]
+                    if index == 0
+                    else frame.add_paragraph()
+                )
+                paragraph.text = item
+                paragraph.level = 0
+                paragraph.font.name = "Aptos"
+                paragraph.font.size = PptxPt(BODY_SIZE)
+                paragraph.font.color.rgb = BODY
+                paragraph.space_after = PptxPt(17)
+                paragraph.line_spacing = 1.15
+                paragraph.bullet = True
+
+            add_footer(slide)
+            add_notes(slide, notes if group_index == 1 else "")
+
+    def add_questions():
+        questions = content.get("questions", [])
+        if not isinstance(questions, list):
+            return
+
+        for index, question in enumerate(questions, start=1):
+            if not isinstance(question, dict):
+                continue
+
+            question_text = clean_text(question.get("question"))
+            if not question_text:
+                continue
+
+            options = question.get("options", [])
+            if not isinstance(options, list):
+                options = []
+
+            items = [question_text]
+            for option_index, option in enumerate(options):
+                option = clean_text(option)
+                if option:
+                    label = (
+                        chr(65 + option_index)
+                        if option_index < 26
+                        else str(option_index + 1)
+                    )
+                    items.append(f"{label}. {option}")
+
+            answer = clean_text(question.get("answer"))
+            explanation = clean_text(question.get("explanation"))
+
+            notes = "\n".join(
+                value for value in (
+                    f"Suggested answer: {answer}" if answer else "",
+                    f"Explanation: {explanation}" if explanation else "",
+                )
+                if value
+            )
+
+            add_content_slide(
+                f"Review Question {index}",
+                items,
+                notes=notes,
+            )
+
+    # 1. Cover.
+    add_cover()
+
+    # 2. Learning objectives.
+    objectives = get_items("learning_objectives")
+    if objectives:
+        add_content_slide("Learning Objectives", objectives)
+
+    # 3. Introduction.
+    introduction = clean_text(content.get("introduction"))
+    if introduction:
+        add_content_slide("Introduction", [introduction])
+
+    # 4. Main lesson: prefer generated presentation slides.
+    generated_slides = content.get("presentation_slides", [])
+    if not isinstance(generated_slides, list):
+        generated_slides = []
+
+    valid_slides = [
+        item for item in generated_slides
+        if isinstance(item, dict) and clean_text(item.get("title"))
+    ]
+
+    if valid_slides:
+        for item in valid_slides:
+            bullets = item.get("bullet_points", [])
+            if not isinstance(bullets, list):
+                bullets = [bullets]
+
+            add_content_slide(
+                item.get("title", "Lesson Content"),
+                bullets,
+                notes=item.get("speaker_notes", ""),
+            )
+    else:
+        sections = content.get("sections", [])
+        if isinstance(sections, list):
+            for index, section in enumerate(sections, start=1):
+                if not isinstance(section, dict):
+                    continue
+
+                heading = clean_text(section.get("heading")) or (
+                    f"Section {index}"
+                )
+                body = clean_text(section.get("content"))
+
+                if body:
+                    paragraphs = [
+                        part.strip()
+                        for part in body.splitlines()
+                        if part.strip()
+                    ]
+                    add_content_slide(heading, paragraphs)
+
+    # 5. Supporting content.
+    for key, heading in (
+        ("key_points", "Key Takeaways"),
+        ("examples", "Practical Examples"),
+        ("fun_facts", "Did You Know?"),
+    ):
+        items = get_items(key)
+        if items:
+            add_content_slide(heading, items)
+
+    # 6. Class activities.
+    activities = content.get("activities", [])
+    if isinstance(activities, list):
+        for index, activity in enumerate(activities, start=1):
+            if not isinstance(activity, dict):
+                continue
+
+            heading = clean_text(activity.get("title")) or (
+                f"Class Activity {index}"
+            )
+            instructions = clean_text(activity.get("instructions"))
+
+            if instructions:
+                add_content_slide(heading, [instructions])
+
+    # 7. Review questions.
+    add_questions()
+
+    # 8. Assignment.
+    assignment = clean_text(content.get("assignment"))
+    if assignment:
+        add_content_slide("Assignment", [assignment])
+
+    # 9. Conclusion.
+    conclusion = clean_text(content.get("conclusion"))
+    if conclusion:
+        add_content_slide("Conclusion", [conclusion])
+
+    # Fallback for lessons with no structured content.
+    if len(presentation.slides) == 1:
+        fallback = clean_text(
+            lesson.learning_notes or lesson.topic
+        )
+        add_content_slide(
+            "Lesson Content",
+            [fallback or "No lesson content available."],
+        )
+
+    output = BytesIO()
+    presentation.save(output)
+    output.seek(0)
+
+    filename = clean_text(lesson.title) or "coursepilot-lesson"
+    safe_filename = "".join(
+        char if char.isalnum() or char in ("-", "_") else "_"
+        for char in filename
+    ).strip("_") or "coursepilot-lesson"
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "presentationml.presentation"
+        ),
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{safe_filename}.pptx"'
+    )
+    return response

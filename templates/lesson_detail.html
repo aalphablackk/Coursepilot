@@ -80,14 +80,28 @@
                 {% include "core/lessons/lesson_sidebar.html" %}
             </aside>
             <main class="col-lg-9">
-                {% if request.user.is_authenticated and lesson.creator_id == request.user.id %}
-                    <div class="d-flex justify-content-end mb-3">
+                <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+
+                    <a href="{% url 'core:export_lesson_docx' lesson_id=lesson.id %}"
+                    class="btn btn-outline-success">
+                        <i class="bi bi-file-earmark-word"></i>
+                        Download Word
+                    </a>
+
+                    <a href="{% url 'core:export_lesson_pptx' lesson_id=lesson.id %}"
+                    class="btn btn-outline-danger">
+                        <i class="bi bi-file-earmark-ppt"></i>
+                        Download PowerPoint
+                    </a>
+
+                    {% if request.user.is_authenticated and lesson.creator_id == request.user.id %}
                         <a href="{% url 'core:edit_lesson' lesson.id %}"
                         class="btn btn-outline-primary">
                             Edit lesson
                         </a>
-                    </div>
-                {% endif %}
+                    {% endif %}
+
+                </div>
                 {% include mode_template %}
             </main>
 
