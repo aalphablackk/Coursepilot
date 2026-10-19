@@ -96,6 +96,7 @@ class LessonGenerationServiceTests(TestCase):
             "duration_minutes": 30,
         }
 
+
         self.valid_json = """
         {
             "title": "Introduction to Computer Networks",
@@ -104,7 +105,10 @@ class LessonGenerationServiceTests(TestCase):
                 {"description": "Define a computer network"}
             ],
             "sections": [
-                {"heading": "Network Basics", "content": "Devices communicate over networks."}
+                {
+                    "heading": "Network Basics",
+                    "content": "Devices communicate over networks."
+                }
             ],
             "key_points": [],
             "examples": [],
@@ -117,9 +121,32 @@ class LessonGenerationServiceTests(TestCase):
             "presentation_slides": [],
             "course_weeks": [],
             "sources": [],
-            "metadata": {}
+            "metadata": {
+                "duration_plan": {
+                    "total_minutes": 30,
+                    "stages": [
+                        {
+                            "name": "Introduction",
+                            "minutes": 5
+                        },
+                        {
+                            "name": "Teaching",
+                            "minutes": 15
+                        },
+                        {
+                            "name": "Practice",
+                            "minutes": 7
+                        },
+                        {
+                            "name": "Conclusion",
+                            "minutes": 3
+                        }
+                    ]
+                }
+            }
         }
         """
+
 
     @patch("core.services.get_ai_provider")
     def test_generates_and_validates_lesson(self, mock_get_provider):

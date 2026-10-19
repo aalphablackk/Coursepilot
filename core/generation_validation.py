@@ -26,7 +26,68 @@ INSTRUCTION_ONLY_PATTERNS = [
     r"^(provide|give|include|add)\s+"
     r"(examples|details|an explanation|more information)\b",
 ]
+def validate_duration_plan(
+    output: LessonOutput,
+    duration_minutes: int,
+) -> None:
+    """Validate the structured instructor duration plan."""
+    metadata = output.metadata or {}
+    plan = output.metadata.get("duration_plan")
 
+    if not isinstance(plan, dict):
+        raise GenerationOutputError(
+            "Generated content must include a structured duration plan."
+        )
+
+    total_minutes = plan.get("total_minutes")
+    stages = plan.get("stages")
+
+    if (
+        isinstance(total_minutes, bool)
+        or not isinstance(total_minutes, int)
+        or total_minutes != duration_minutes
+    ):
+        raise GenerationOutputError(
+            "Duration plan total must match the requested session duration."
+        )
+
+    if not isinstance(stages, list) or not stages:
+        raise GenerationOutputError(
+            "Duration plan must include at least one stage."
+        )
+
+    allocated_minutes = 0
+
+    for index, stage in enumerate(stages, start=1):
+        if not isinstance(stage, dict):
+            raise GenerationOutputError(
+                f"Duration plan stage {index} must be an object."
+            )
+
+        name = stage.get("name")
+        minutes = stage.get("minutes")
+
+        if not isinstance(name, str) or not name.strip():
+            raise GenerationOutputError(
+                f"Duration plan stage {index} must have a name."
+            )
+
+        if (
+            isinstance(minutes, bool)
+            or not isinstance(minutes, int)
+            or minutes <= 0
+        ):
+            raise GenerationOutputError(
+                f"Duration plan stage {index} must have positive integer minutes."
+            )
+
+        allocated_minutes += minutes
+
+    if allocated_minutes != duration_minutes:
+        raise GenerationOutputError(
+            "Duration plan stage allocations must add up to "
+            "the requested session duration."
+        )
 
 def validate_substantive_text(
     value: str,
@@ -66,6 +127,7 @@ def validate_generation_output(
     mode: str,
     course_weeks: int | None = None,
     classes_per_week: int | None = None,
+    duration_minutes: int | None = None,
 ) -> LessonOutput:
     """Validate that generated content meets mode-specific requirements."""
 
@@ -317,9 +379,15 @@ def validate_generation_output(
 
                 expected_session_number += 1
 
+
     else:
         raise GenerationOutputError(
             f"Unsupported generation mode: {mode}"
         )
+    if (
+        duration_minutes is not None
+        and mode in {"quick_lesson", "presentation"}
+    ):
+        validate_duration_plan(output, duration_minutes)
 
     return output
