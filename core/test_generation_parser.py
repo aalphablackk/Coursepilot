@@ -97,3 +97,35 @@ class GenerationParserTests(SimpleTestCase):
 
         with self.assertRaises(GenerationOutputError):
             parse_generation_output(json.dumps(payload))
+    def test_wrong_field_type_is_rejected(self):
+        payload = self.valid_payload()
+        payload["key_points"] = "This should be a list."
+
+        with self.assertRaises(GenerationOutputError):
+            parse_generation_output(json.dumps(payload))
+    def test_source_objects_are_parsed(self):
+        payload = self.valid_payload()
+        payload["sources"] = [
+            {
+                "title": "Python Documentation",
+                "url": "https://docs.python.org/3/",
+            }
+        ]
+
+        result = parse_generation_output(json.dumps(payload))
+
+        self.assertEqual(
+            result.sources[0]["title"],
+            "Python Documentation",
+        )
+        self.assertEqual(
+            result.sources[0]["url"],
+            "https://docs.python.org/3/",
+        )
+
+    def test_source_strings_are_rejected(self):
+        payload = self.valid_payload()
+        payload["sources"] = ["https://docs.python.org/3/"]
+
+        with self.assertRaises(GenerationOutputError):
+            parse_generation_output(json.dumps(payload))

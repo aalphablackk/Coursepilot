@@ -42,13 +42,66 @@ class WebResearchService:
         except (ValueError, TypeError):
             return False
 
+    @staticmethod
+    def _build_search_queries(query: str) -> list[dict[str, Any]]:
+        """Build complementary searches and apply freshness when relevant."""
+        topic = query.strip()
+
+        prefix = "Current, reliable educational information about:"
+        suffix = ". Prioritize official documentation and authoritative sources."
+
+        if topic.startswith(prefix):
+            topic = topic[len(prefix):].strip()
+
+        if topic.endswith(suffix):
+            topic = topic[:-len(suffix)].strip()
+
+        topic = topic.rstrip(".").strip()
+
+        if not topic:
+            return []
+
+        freshness_keywords = (
+            "latest",
+            "recent",
+            "current",
+            "new",
+            "updated",
+            "updates",
+            "2026",
+            "release notes",
+            "what's new",
+            "what is new",
+        )
+
+        topic_lower = topic.lower()
+        needs_freshness = any(
+            keyword in topic_lower
+            for keyword in freshness_keywords
+        )
+
+        return [
+            {
+                "query": topic,
+                "time_range": None,
+            },
+            {
+                "query": f"{topic} official documentation reference guide",
+                "time_range": None,
+            },
+            {
+                "query": f"{topic} latest updates release notes",
+                "time_range": "month" if needs_freshness else None,
+            },
+        ]
+
     def search(
         self,
         query: str,
         *,
         max_results: int = 5,
     ) -> list[dict[str, Any]]:
-        """Return normalized search results with source URLs."""
+        """Search multiple query variations and return unique sources."""
         if not isinstance(query, str) or not query.strip():
             raise AIProviderResponseError("A search query is required.")
 
@@ -61,53 +114,90 @@ class WebResearchService:
                 "max_results must be an integer between 1 and 10."
             )
 
-        try:
-            response = self.client.search(
-                query=query.strip(),
-                max_results=max_results,
-                search_depth="basic",
-            )
-        except Exception as exc:
-            # Do not expose provider details or credentials to users.
-            raise AIProviderUnavailableError(
-                "Web research failed. Please try again."
-            ) from exc
+        sources_by_url: dict[str, dict[str, Any]] = {}
 
-        if not isinstance(response, dict):
-            raise AIProviderResponseError(
-                "The research service returned an invalid response."
-            )
+        for search_params in self._build_search_queries(query):
+            try:
+                response = self.client.search(
+                    query=search_params["query"],
+                    max_results=max_results,
+                    search_depth="advanced",
+                    include_raw_content="markdown",
+                    **(
+                        {"time_range": search_params["time_range"]}
+                        if search_params["time_range"]
+                        else {}
+                    ),
+                )
+            except Exception as exc:
+                raise AIProviderUnavailableError(
+                    "Web research failed. Please try again."
+                ) from exc
 
-        results = response.get("results", [])
+            if not isinstance(response, dict):
+                raise AIProviderResponseError(
+                    "The research service returned an invalid response."
+                )
 
-        if not isinstance(results, list):
-            raise AIProviderResponseError(
-                "The research service returned an invalid response."
-            )
+            results = response.get("results", [])
+            if not isinstance(results, list):
+                raise AIProviderResponseError(
+                    "The research service returned an invalid response."
+                )
 
-        normalized_results = []
+            for item in results:
+                if not isinstance(item, dict):
+                    continue
 
-        for item in results:
-            if not isinstance(item, dict):
-                continue
+                url = item.get("url")
+                content = item.get("raw_content") or item.get("content")
 
-            url = item.get("url")
-            content = item.get("content")
+                if not self._is_valid_http_url(url):
+                    continue
 
-            if not self._is_valid_http_url(url):
-                continue
+                if not isinstance(content, str) or not content.strip():
+                    continue
 
-            if not isinstance(content, str) or not content.strip():
-                continue
+                url = url.strip()
+                deduplication_key = url.split("#", 1)[0].rstrip("/")
 
-            title = item.get("title")
-            score = item.get("score")
+                title = item.get("title")
+                score = item.get("score")
 
-            normalized_results.append({
-                "title": title.strip() if isinstance(title, str) and title.strip() else "Untitled source",
-                "url": url.strip(),
-                "content": content.strip(),
-                "score": score if isinstance(score, (int, float)) and not isinstance(score, bool) else None,
-            })
+                source = {
+                    "title": (
+                        title.strip()
+                        if isinstance(title, str) and title.strip()
+                        else "Untitled source"
+                    ),
+                    "url": url,
+                    "content": content.strip(),
+                    "score": (
+                        score
+                        if isinstance(score, (int, float))
+                        and not isinstance(score, bool)
+                        else None
+                    ),
+                }
 
-        return normalized_results
+                existing = sources_by_url.get(deduplication_key)
+
+                if existing is None or (
+                    source["score"] is not None
+                    and (
+                        existing["score"] is None
+                        or source["score"] > existing["score"]
+                    )
+                ):
+                    sources_by_url[deduplication_key] = source
+
+        ranked_sources = sorted(
+            sources_by_url.values(),
+            key=lambda source: (
+                source["score"] is not None,
+                source["score"] if source["score"] is not None else 0,
+            ),
+            reverse=True,
+        )
+
+        return ranked_sources[:max_results]

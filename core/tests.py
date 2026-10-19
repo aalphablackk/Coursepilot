@@ -1,10 +1,10 @@
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from .models import Course, Lesson
 from unittest.mock import patch
+from core.prompt_builder import build_generation_prompt
 User = get_user_model()
 
 from django.test import TestCase
@@ -378,3 +378,138 @@ class LessonModelTests(TestCase):
             "Introduction",
         )
 
+
+class ResearchPromptBuilderTests(TestCase):
+    def setUp(self):
+        self.data = {
+            "mode": "quick_lesson",
+            "learner_level": "intermediate",
+            "detail_level": "detailed",
+            "topic": "Bootstrap updates",
+            "duration_minutes": 60,
+            "use_web_research": True,
+        }
+
+    def test_research_sources_are_included_in_prompt(self):
+        self.data["research_sources"] = [
+            {
+                "title": "Official Bootstrap Documentation",
+                "url": "https://getbootstrap.com/docs/",
+                "content": "Bootstrap documentation and component updates.",
+            }
+        ]
+
+        prompt = build_generation_prompt(self.data)
+
+        self.assertIn("RETRIEVED RESEARCH SOURCES", prompt)
+        self.assertIn("Official Bootstrap Documentation", prompt)
+        self.assertIn("https://getbootstrap.com/docs/", prompt)
+        self.assertIn(
+            "Bootstrap documentation and component updates.",
+            prompt,
+        )
+
+    def test_missing_research_sources_are_not_claimed_as_verified(self):
+        prompt = build_generation_prompt(self.data)
+
+        self.assertIn("No research results were supplied", prompt)
+        self.assertNotIn("RETRIEVED RESEARCH SOURCES", prompt)
+
+    def test_research_disabled_does_not_include_research_content(self):
+        self.data["use_web_research"] = False
+        self.data["research_sources"] = [
+            {
+                "title": "Private test source",
+                "url": "https://example.com/",
+                "content": "Private test content.",
+            }
+        ]
+
+        prompt = build_generation_prompt(self.data)
+
+        self.assertNotIn("Private test source", prompt)
+        self.assertNotIn("Private test content.", prompt)
+
+    def test_learner_levels_have_distinct_instructional_guidance(self):
+        beginner = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python functions",
+            "learner_level": "beginner",
+        })
+        intermediate = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python functions",
+            "learner_level": "intermediate",
+        })
+        advanced = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python functions",
+            "learner_level": "advanced",
+        })
+
+        self.assertIn("new to the subject", beginner)
+        self.assertIn("small logical steps", beginner)
+        self.assertIn("fundamentals", intermediate)
+        self.assertIn("how and why concepts work", intermediate)
+        self.assertIn("assumptions", advanced)
+        self.assertIn("edge cases", advanced)
+
+    def test_detail_levels_have_distinct_depth_guidance(self):
+        prompts = {
+            level: build_generation_prompt({
+                "mode": "quick_lesson",
+                "topic": "Python functions",
+                "learner_level": "intermediate",
+                "detail_level": level,
+            })
+            for level in ("concise", "standard", "detailed")
+        }
+
+        self.assertIn("focused treatment", prompts["concise"])
+        self.assertIn("balanced, instructor-ready treatment", prompts["standard"])
+        self.assertIn("comprehensive, well-developed treatment", prompts["detailed"])
+        self.assertIn("worked examples", prompts["detailed"])
+        self.assertNotEqual(prompts["concise"], prompts["detailed"])
+
+    def test_duration_requires_realistic_time_allocation(self):
+        prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python functions",
+            "duration_minutes": 30,
+        })
+
+        self.assertIn("SESSION DURATION: 30 minutes.", prompt)
+        self.assertIn("add up to the requested session duration", prompt)
+        self.assertIn("specific minute values", prompt)
+        self.assertIn("learner practice", prompt)
+
+    def test_duration_guidance_adapts_to_requested_duration(self):
+        short_prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python functions",
+            "duration_minutes": 30,
+        })
+        long_prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python functions",
+            "duration_minutes": 90,
+        })
+
+        self.assertIn("SESSION DURATION: 30 minutes.", short_prompt)
+        self.assertIn("SESSION DURATION: 90 minutes.", long_prompt)
+        self.assertIn(
+            "Prioritize essential learning objectives",
+            short_prompt,
+        )
+        self.assertIn(
+            "Prioritize essential learning objectives",
+            long_prompt,
+        )
+
+    def test_duration_guidance_is_omitted_when_not_provided(self):
+        prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python functions",
+        })
+
+        self.assertNotIn("SESSION DURATION:", prompt)

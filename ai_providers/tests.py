@@ -426,8 +426,44 @@ class WebResearchServiceTests(SimpleTestCase):
             results[0]["content"],
             "Python is a programming language.",
         )
-        mock_client.search.assert_called_once()
+        self.assertEqual(mock_client.search.call_count, 3)
 
+        first_call = mock_client.search.call_args_list[0]
+        self.assertEqual(
+            first_call.kwargs["query"],
+            "Introduction to Python",
+        )
+        self.assertEqual(first_call.kwargs["max_results"], 5)
+        self.assertEqual(first_call.kwargs["search_depth"], "advanced")
+        self.assertEqual(
+            first_call.kwargs["include_raw_content"],
+            "markdown",
+        )
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_raw_content_is_preferred_when_available(
+        self, mock_client_class
+    ):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {
+            "results": [
+                {
+                    "title": "Official Documentation",
+                    "url": "https://example.com/docs",
+                    "content": "Short search excerpt.",
+                    "raw_content": "Full extracted documentation content.",
+                }
+            ]
+        }
+
+        service = WebResearchService()
+        results = service.search("Python documentation")
+
+        self.assertEqual(
+            results[0]["content"],
+            "Full extracted documentation content.",
+        )
     @override_settings(TAVILY_API_KEY="")
     def test_missing_api_key_is_rejected(self):
         with self.assertRaises(AIProviderNotConfiguredError):
@@ -493,3 +529,70 @@ class WebResearchServiceTests(SimpleTestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["title"], "Valid source")
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_search_queries_include_documentation_and_updates(
+        self, mock_client_class
+    ):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {"results": []}
+        service = WebResearchService()
+        service.search(
+            "Current, reliable educational information about: Django 6. "
+            "Prioritize official documentation and authoritative sources."
+        )
+        queries = [
+            call.kwargs["query"]
+            for call in mock_client.search.call_args_list
+        ]
+        calls = mock_client.search.call_args_list
+        self.assertNotIn("time_range", calls[0].kwargs)
+        self.assertNotIn("time_range", calls[1].kwargs)
+        self.assertNotIn("time_range", calls[2].kwargs)
+        self.assertEqual(len(queries), 3)
+        self.assertEqual(queries[0], "Django 6")
+        self.assertIn("official documentation", queries[1])
+        self.assertIn("release notes", queries[2])
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_freshness_filter_is_used_for_recent_topics(
+        self, mock_client_class
+    ):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {"results": []}
+
+        service = WebResearchService()
+        service.search("latest Django updates")
+
+        calls = mock_client.search.call_args_list
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(calls[2].kwargs["time_range"], "month")
+
+    @patch("ai_providers.research.TavilyClient")
+    def test_duplicate_urls_are_removed_across_searches(
+        self, mock_client_class
+    ):
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.return_value = {
+            "results": [
+                {
+                    "title": "Python Documentation",
+                    "url": "https://example.com/docs",
+                    "content": "Documentation content.",
+                    "score": 0.9,
+                },
+                {
+                    "title": "Duplicate URL",
+                    "url": "https://example.com/docs#section",
+                    "content": "Duplicate content.",
+                    "score": 0.8,
+                },
+            ]
+        }
+        service = WebResearchService()
+        results = service.search("Python")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["title"], "Python Documentation")

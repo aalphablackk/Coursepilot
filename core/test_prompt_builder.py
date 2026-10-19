@@ -137,6 +137,84 @@ class PromptBuilderTests(SimpleTestCase):
         self.assertIn("when provided", prompt)
         self.assertIn("Never invent citations", prompt)
 
+    def test_research_sources_are_included_when_provided(self):
+        prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Django security",
+            "use_web_research": True,
+            "research_sources": [
+                {
+                    "title": "Official Django Security Guide",
+                    "url": "https://docs.djangoproject.com/en/stable/topics/security/",
+                    "content": "Django provides built-in protections against common web attacks.",
+                }
+            ],
+        })
+
+        self.assertIn("RETRIEVED RESEARCH SOURCES:", prompt)
+        self.assertIn("Official Django Security Guide", prompt)
+        self.assertIn(
+            "https://docs.djangoproject.com/en/stable/topics/security/",
+            prompt,
+        )
+        self.assertIn(
+            "Django provides built-in protections against common web attacks.",
+            prompt,
+        )
+
+    def test_missing_research_results_do_not_claim_current_verification(self):
+        prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Artificial Intelligence",
+            "use_web_research": True,
+        })
+
+        self.assertIn("No research results were supplied", prompt)
+        self.assertIn(
+            "Do not claim that the lesson has been verified against current web sources.",
+            prompt,
+        )
+
+    def test_research_instructions_are_absent_when_research_is_disabled(self):
+        prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Python",
+            "use_web_research": False,
+        })
+
+        self.assertNotIn("WEB RESEARCH:", prompt)
+        self.assertNotIn("RETRIEVED RESEARCH SOURCES:", prompt)
+
+    def test_invalid_research_sources_are_skipped(self):
+        prompt = build_generation_prompt({
+            "mode": "quick_lesson",
+            "topic": "Django",
+            "use_web_research": True,
+            "research_sources": [
+                "not a dictionary",
+                {
+                    "title": "Missing URL",
+                    "content": "This source has no URL.",
+                },
+                {
+                    "title": "Missing content",
+                    "url": "https://example.com/incomplete",
+                },
+                {
+                    "title": "Valid source",
+                    "url": "https://example.com/valid",
+                    "content": "This is valid research content.",
+                },
+            ],
+        })
+
+        self.assertIn("Valid source", prompt)
+        self.assertIn("https://example.com/valid", prompt)
+        self.assertIn("This is valid research content.", prompt)
+        self.assertNotIn("Missing URL", prompt)
+        self.assertNotIn("Missing content", prompt)
+        self.assertNotIn("This source has no URL.", prompt)
+
     def test_invalid_mode_is_rejected(self):
         with self.assertRaises(ValueError):
             build_generation_prompt({"mode": "unknown"})
@@ -154,7 +232,7 @@ class PromptBuilderTests(SimpleTestCase):
                 "mode": "quick_lesson",
                 "detail_level": "unknown",
             })
-    
+
     def test_each_mode_has_its_own_output_requirements(self):
         cases = {
             "quick_lesson": "measurable learning objectives",
@@ -199,4 +277,4 @@ class PromptBuilderTests(SimpleTestCase):
         self.assertIn("Total scheduled classes: 32", prompt)
         self.assertIn("Do not omit sessions", prompt)
 
-    
+
