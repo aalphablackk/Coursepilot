@@ -1,0 +1,50 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="h4 mb-3">Resend verification email</h1>
+
+                    {% if message %}
+                        <div class="alert alert-info" role="status">
+                            {{ message }}
+                        </div>
+                    {% endif %}
+
+                    <p>
+                        Enter the email address you used to register.
+                        If verification is still pending, we'll send
+                        another link.
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">
+                                Email address
+                            </label>
+                            <input
+                                type="email"
+                                name="email"
+                                id="id_email"
+                                class="form-control"
+                                autocomplete="email"
+                                required
+                            >
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            Resend verification email
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

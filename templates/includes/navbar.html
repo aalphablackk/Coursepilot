@@ -1,11 +1,15 @@
+{% load static %}
 
-<nav class="navbar navbar-expand-lg cp-navbar sticky-top">
+<nav class="navbar navbar-expand-lg cp-navbar sticky-top" aria-label="Main navigation">
     <div class="container cp-container">
+
+        <!-- Brand -->
         <a class="cp-brand" href="{% url 'home' %}" aria-label="CoursePilot home">
             <span class="cp-brand-mark" aria-hidden="true">C</span>
             <span>CoursePilot</span>
         </a>
 
+        <!-- Mobile toggle -->
         <button
             class="navbar-toggler"
             type="button"
@@ -18,25 +22,160 @@
             <span class="navbar-toggler-icon"></span>
         </button>
 
+        <!-- Navigation -->
         <div class="collapse navbar-collapse" id="mainNavbar">
-            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2 py-3 py-lg-0">
+            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 py-3 py-lg-0">
 
-                <li class="nav-item">
-                    {% comment %} <a class="nav-link" href="{% url 'home' %}">Home</a> {% endcomment %}
-                </li>
-                <li class="nav-item">
-                    {% comment %} <a class="nav-link" href="{% url 'generate' %}">Create lesson</a> {% endcomment %}
-                </li>
-                <li class="nav-item">
-                    <a href="{% url 'core:library' %}" class="nav-link">
-                        Library
-                    </a>
-                </li>
-                <li class="nav-item ms-lg-2">
-                    {% comment %} <a class="btn btn-primary px-3" href="{% url 'generate' %}"> {% endcomment %}
-                        Get started
-                    </a>
-                </li>
+                {% if user.is_authenticated %}
+
+                    <!-- Main navigation -->
+                    <li class="nav-item">
+                        <a
+                            href="{% url 'home' %}"
+                            class="nav-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}"
+                        >
+                            Home
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a
+                            href="{% url 'core:library' %}"
+                            class="nav-link{% if request.resolver_match.namespace == 'core' and request.resolver_match.url_name == 'library' %} active{% endif %}"
+                        >
+                            My Library
+                        </a>
+                    </li>
+
+                    <!-- Create dropdown -->
+                    <li class="nav-item dropdown">
+                        <a
+                            href="#"
+                            class="nav-link dropdown-toggle"
+                            id="createDropdown"
+                            role="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                        >
+                            Create
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="createDropdown">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'home' %}">
+                                    <i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>
+                                    Quick Lesson
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'home' %}">
+                                    <i class="bi bi-journal-richtext me-2" aria-hidden="true"></i>
+                                    Custom Lesson
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'home' %}">
+                                    <i class="bi bi-collection me-2" aria-hidden="true"></i>
+                                    Full Course
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Account dropdown -->
+                    <li class="nav-item dropdown ms-lg-2">
+                        <a
+                            href="#"
+                            class="nav-link dropdown-toggle cp-account-toggle"
+                            id="accountDropdown"
+                            role="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                        >
+                            <span class="cp-account-avatar" aria-hidden="true">
+                                {{ user.username|first|upper }}
+                            </span>
+                            <span class="d-lg-none d-xl-inline">
+                                {{ user.username }}
+                            </span>
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountDropdown">
+
+                            <li class="px-3 py-2">
+                                <div class="fw-semibold">{{ user.username }}</div>
+                                <small class="text-muted">Your CoursePilot account</small>
+                            </li>
+
+                            <li><hr class="dropdown-divider"></li>
+
+                            <li>
+                                <a class="dropdown-item" href="{% url 'accounts:password_change' %}">
+                                    <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
+                                    Change password
+                                </a>
+                            </li>
+
+                            <li>
+                                <a class="dropdown-item" href="{% url 'accounts:password_reset' %}">
+                                    <i class="bi bi-key me-2" aria-hidden="true"></i>
+                                    Reset password
+                                </a>
+                            </li>
+
+                            <li><hr class="dropdown-divider"></li>
+
+                            <li>
+                                <form method="post" action="{% url 'accounts:logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>
+                                        Log out
+                                    </button>
+                                </form>
+                            </li>
+
+                        </ul>
+                    </li>
+
+                {% else %}
+
+                    <!-- Public navigation -->
+                    <li class="nav-item">
+                        <a
+                            href="{% url 'home' %}"
+                            class="nav-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}"
+                        >
+                            Home
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#features" class="nav-link">
+                            Features
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#how-it-works" class="nav-link">
+                            How it works
+                        </a>
+                    </li>
+
+                    <li class="nav-item ms-lg-2">
+                        <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary px-3">
+                            Log in
+                        </a>
+                    </li>
+
+                    <li class="nav-item ms-lg-2">
+                        <a href="{% url 'accounts:signup' %}" class="btn btn-primary px-3">
+                            Get started
+                        </a>
+                    </li>
+
+                {% endif %}
+
             </ul>
         </div>
     </div>

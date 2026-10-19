@@ -1,4 +1,4 @@
-# from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect,get_object_or_404
 from django.http import Http404,HttpResponse
 from .forms import (
@@ -42,9 +42,13 @@ logger = logging.getLogger(__name__)
 
 from django.http import JsonResponse
 
-
+@login_required
 def lesson_generation_status(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id,
+        creator=request.user,
+    )
 
     if lesson.creator_id and (
         not request.user.is_authenticated
@@ -67,6 +71,7 @@ def lesson_generation_status(request, lesson_id):
         ),
     })
 
+@login_required
 def generate_course_session(request, course_id, outline_item_id):
     if request.method != "POST":
         raise Http404
@@ -279,9 +284,7 @@ def clean_generated_text(value):
 
     return value
 
-# @login_required
-
-
+@login_required
 def generate(request):
     submitted = request.method == "POST"
     generated_output = None
@@ -348,11 +351,7 @@ def generate(request):
             ).strip()[:200]
 
             lesson = Lesson.objects.create(
-                creator=(
-                    request.user
-                    if request.user.is_authenticated
-                    else None
-                ),
+                creator=request.user,
                 title=lesson_title,
                 topic=data.get("topic", ""),
                 source_text=data.get("source_text", ""),
@@ -425,20 +424,16 @@ def generate(request):
     return render(request, "generate.html", context)
 
 
-
+@login_required
 def library(request):
-    if request.user.is_authenticated:
-        lessons = Lesson.objects.filter(
-            Q(creator=request.user) | Q(creator__isnull=True),
-            course__isnull=True,
-        )
-        courses = Course.objects.filter(creator=request.user)
-    else:
-        lessons = Lesson.objects.filter(
-            creator__isnull=True,
-            course__isnull=True,
-        )
-        courses = Course.objects.none()
+    lessons = Lesson.objects.filter(
+        creator=request.user,
+        course__isnull=True,
+    )
+
+    courses = Course.objects.filter(
+        creator=request.user,
+    )
 
     search_query = request.GET.get("q", "").strip()
     selected_status = request.GET.get("status", "").strip()
@@ -681,9 +676,13 @@ def build_lesson_steps(lesson, content):
 
     return steps
 
-
+@login_required
 def lesson_detail(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id,
+        creator=request.user,
+    )
 
     course_sessions = []
     current_session_number = None
@@ -698,11 +697,6 @@ def lesson_detail(request, lesson_id):
         if lesson.outline_item_id:
             current_session_number = lesson.outline_item.session_number
 
-
-    if lesson.creator_id and lesson.creator_id != (
-        request.user.id if request.user.is_authenticated else None
-    ):
-        raise Http404
 
     content = lesson.presentation_content
     if not isinstance(content, dict):
@@ -726,10 +720,8 @@ def lesson_detail(request, lesson_id):
         },
     )
 
+@login_required
 def course_outline(request, course_id):
-    if not request.user.is_authenticated:
-        raise Http404
-
     course = get_object_or_404(
         Course,
         id=course_id,
@@ -779,7 +771,7 @@ def course_outline(request, course_id):
         },
     )
 
-# @login_required
+@login_required
 def edit_lesson(request, lesson_id):
     lesson = get_object_or_404(
         Lesson,
@@ -1139,7 +1131,7 @@ def edit_lesson(request, lesson_id):
         },
     )
 
-# @login_required
+@login_required
 @require_POST
 def delete_lesson(request, lesson_id):
     lesson = get_object_or_404(
@@ -1174,7 +1166,7 @@ def delete_lesson(request, lesson_id):
     return redirect("core:library")
 
 
-# @login_required
+@login_required
 @require_POST
 def delete_course(request, course_id):
     course = get_object_or_404(
@@ -1191,8 +1183,13 @@ def delete_course(request, course_id):
 
     return redirect("core:library")
 
+@login_required
 def export_lesson_docx(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id,
+        creator=request.user,
+    )
 
     document = Document()
     document.add_heading(
@@ -1361,6 +1358,7 @@ def export_lesson_docx(request, lesson_id):
 
     return response
 
+@login_required
 def export_lesson_pptx(request, lesson_id):
     import random
     from io import BytesIO
@@ -1373,13 +1371,13 @@ def export_lesson_pptx(request, lesson_id):
     from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
     from pptx.util import Inches as PptxInches, Pt as PptxPt
 
-    lesson = get_object_or_404(Lesson, id=lesson_id)
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id,
+        creator=request.user,
+    )
 
     # Preserve the existing access rules.
-    if lesson.creator_id and lesson.creator_id != (
-        request.user.id if request.user.is_authenticated else None
-    ):
-        raise Http404
 
     if lesson.generation_status != Lesson.GenerationStatus.COMPLETED:
         raise Http404

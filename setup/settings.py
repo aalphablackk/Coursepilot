@@ -87,7 +87,7 @@ INSTALLED_APPS = [
 
     "cloudinary",
     "cloudinary_storage",
-
+    "accounts",
     "core",
     "ai_providers"
 ]
@@ -224,28 +224,44 @@ EMAIL_BACKEND = config(
     default="django.core.mail.backends.console.EmailBackend",
 )
 
-EMAIL_HOST = config("EMAIL_HOST", default="")
-EMAIL_PORT = config("EMAIL_PORT", default=465, cast=int)
-EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=False, cast=bool)
-EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=True, cast=bool)
-EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = config(
-    "DEFAULT_FROM_EMAIL",
-    default=EMAIL_HOST_USER or "noreply@superkids.example",
+EMAIL_HOST = config(
+    "EMAIL_HOST",
+    default="smtp.gmail.com",
 )
 
+EMAIL_PORT = config(
+    "EMAIL_PORT",
+    default=465,
+    cast=int,
+)
 
-# LOGIN_URL = "accounts:login"
-# LOGIN_REDIRECT_URL = "accounts:dashboard"
-# # LOGOUT_REDIRECT_URL = "books:home"
+EMAIL_USE_TLS = config(
+    "EMAIL_USE_TLS",
+    default=False,
+    cast=bool,
+)
 
-# AUTHENTICATION_BACKENDS = [
-#     "accounts.backends.EmailOrUsernameBackend",
-# ]
+EMAIL_USE_SSL = config(
+    "EMAIL_USE_SSL",
+    default=True,
+    cast=bool,
+)
 
-LOGIN_URL = "/admin/login/"
-LOGIN_REDIRECT_URL = "/"
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL",
+    default=EMAIL_HOST_USER or "CoursePilot <noreply@coursepilot.local>",
+)
+AUTHENTICATION_BACKENDS = [
+    "accounts.backends.UsernameOrEmailBackend",
+]
+
+
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "core:library"
+LOGOUT_REDIRECT_URL = "home"
 
 # ============================================================
 # PRODUCTION SECURITY

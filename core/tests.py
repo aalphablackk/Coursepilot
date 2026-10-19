@@ -111,7 +111,15 @@ class GenerationValidationRegressionTests(TestCase):
         },
     }
 )
+
+
 class GenerationViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="testpassword123",
+        )
+        self.client.force_login(self.user)
     # Keep all four existing test methods here.
     """Test the actual generation page response."""
     form_data = {
@@ -198,6 +206,15 @@ class GenerationViewTests(TestCase):
     #     )
 
     #     mock_generate_lesson.assert_called_once()
+    def test_anonymous_user_is_redirected_from_generation_page(self):
+        self.client.logout()
+
+        response = self.client.get(
+            reverse("core:generate")
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.url)
 
     def test_missing_duration_displays_error_not_success(self):
         data = self.valid_post_data()
