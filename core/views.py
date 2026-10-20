@@ -7,7 +7,7 @@ from .forms import (
     LessonSectionForm,
     LessonQuestionForm,
 )
-
+from .generation import generate_lesson_directly
 
 from .section_development import (
     SectionDevelopmentError,
@@ -39,7 +39,11 @@ from pptx.util import Inches as PptxInches, Pt as PptxPt
 
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
-
+def is_ajax_request(request):
+    return (
+        request.headers.get("X-Requested-With")
+        == "XMLHttpRequest"
+    )
 
 
 
@@ -104,6 +108,16 @@ def generate_course_session(request, course_id, outline_item_id):
     ).first()
 
     if existing_lesson:
+        if is_ajax_request(request):
+            return JsonResponse({
+                "success": True,
+                "status": "completed",
+                "lesson_url": reverse(
+                    "core:lesson_detail",
+                    kwargs={"lesson_id": existing_lesson.id},
+                ),
+            })
+
         return redirect(
             "core:lesson_detail",
             lesson_id=existing_lesson.id,
@@ -113,10 +127,15 @@ def generate_course_session(request, course_id, outline_item_id):
         CourseOutlineItem.Status.PLANNED,
         CourseOutlineItem.Status.FAILED,
     ):
-        messages.warning(
-            request,
-            "This session is not available for generation.",
-        )
+        message = "This session is not available for generation."
+
+        if is_ajax_request(request):
+            return JsonResponse(
+                {"success": False, "message": message},
+                status=409,
+            )
+
+        messages.warning(request, message)
         return redirect(
             "core:course_outline",
             course_id=course.id,
@@ -238,6 +257,17 @@ def generate_course_session(request, course_id, outline_item_id):
         outline_item.save(
             update_fields=["status", "generation_error", "updated_at"]
         )
+        if is_ajax_request(request):
+            return JsonResponse({
+                "success": True,
+                "status": "ready_for_review",
+                "message": "Session generated successfully.",
+                "session_number": outline_item.session_number,
+                "lesson_url": reverse(
+                    "core:lesson_detail",
+                    kwargs={"lesson_id": lesson.id},
+                ),
+            })
 
         return redirect(
             "core:lesson_detail",
@@ -265,10 +295,21 @@ def generate_course_session(request, course_id, outline_item_id):
             ]
         )
 
+        if is_ajax_request(request):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "status": "failed",
+                    "message": outline_item.generation_error,
+                },
+                status=500,
+            )
+
         messages.error(
             request,
             "Session generation failed. Please try again.",
         )
+
         return redirect(
             "core:course_outline",
             course_id=course.id,
@@ -374,46 +415,22 @@ def generate(request):
                 generation_stage="Waiting to start",
                 generation_error="",
             )
+            generated_lesson = generate_lesson_directly(
+                str(lesson.pk),
+                data.copy(),
+            )
 
-            # Queue generation only after the database transaction commits.
-            def queue_lesson_generation(
-                lesson_id=str(lesson.pk),
-                payload=data.copy(),
-            ):
-                try:
-                    generate_lesson_task.delay(
-                        lesson_id,
-                        payload,
-                    )
-                except Exception:
-                    logger.exception(
-                        "Could not queue lesson generation for %s",
-                        lesson_id,
-                    )
+            if generated_lesson is not None:
+                return redirect(
+                    "core:lesson_detail",
+                    lesson_id=generated_lesson.pk,
+                )
 
-                    Lesson.objects.filter(pk=lesson_id).update(
-                        generation_status=Lesson.GenerationStatus.FAILED,
-                        generation_stage="Could not start generation",
-                        generation_error=(
-                            "We couldn't start lesson generation. "
-                            "Please try again."
-                        ),
-                        generation_completed_at=timezone.now(),
-                    )
+            lesson.refresh_from_db()
 
-            transaction.on_commit(queue_lesson_generation)
-
-            return render(
-                request,
-                "generate.html",
-                {
-                    "form": form,
-                    "submitted": True,
-                    "generation_data": data,
-                    "generation_lesson": lesson,
-                    "generated_output": None,
-                    "generation_error": None,
-                },
+            generation_error = (
+                lesson.generation_error
+                or "We couldn't generate this lesson. Please try again."
             )
 
     context = {
@@ -429,6 +446,60 @@ def generate(request):
     }
 
     return render(request, "generate.html", context)
+    #         # Queue generation only after the database transaction commits.
+    #         def queue_lesson_generation(
+    #             lesson_id=str(lesson.pk),
+    #             payload=data.copy(),
+    #         ):
+    #             try:
+    #                 generate_lesson_task.delay(
+    #                     lesson_id,
+    #                     payload,
+    #                 )
+    #             except Exception:
+    #                 logger.exception(
+    #                     "Could not queue lesson generation for %s",
+    #                     lesson_id,
+    #                 )
+
+    #                 Lesson.objects.filter(pk=lesson_id).update(
+    #                     generation_status=Lesson.GenerationStatus.FAILED,
+    #                     generation_stage="Could not start generation",
+    #                     generation_error=(
+    #                         "We couldn't start lesson generation. "
+    #                         "Please try again."
+    #                     ),
+    #                     generation_completed_at=timezone.now(),
+    #                 )
+
+    #         transaction.on_commit(queue_lesson_generation)
+
+    #         return render(
+    #             request,
+    #             "generate.html",
+    #             {
+    #                 "form": form,
+    #                 "submitted": True,
+    #                 "generation_data": data,
+    #                 "generation_lesson": lesson,
+    #                 "generated_output": None,
+    #                 "generation_error": None,
+    #             },
+    #         )
+
+    # context = {
+    #     "form": form,
+    #     "submitted": submitted,
+    #     "generation_data": (
+    #         form.cleaned_data
+    #         if submitted and form.is_valid()
+    #         else None
+    #     ),
+    #     "generated_output": generated_output,
+    #     "generation_error": generation_error,
+    # }
+
+    # return render(request, "generate.html", context)
 
 
 @login_required

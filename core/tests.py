@@ -162,7 +162,8 @@ class GenerationViewTests(TestCase):
                 self.form_data,
             )
 
-        self.assertEqual(response.status_code, 200)
+        # self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.url)
 
         lesson = Lesson.objects.get(topic="Becoming a Man")
 
@@ -206,6 +207,37 @@ class GenerationViewTests(TestCase):
     #     )
 
     #     mock_generate_lesson.assert_called_once()
+    @patch("core.views.generate_lesson_directly")
+    def test_valid_post_generates_lesson(self, mock_generate):
+        lesson = Lesson.objects.create(
+            creator=self.user,
+            title="Becoming a Man",
+            topic="Becoming a Man",
+            generation_mode=Lesson.GenerationMode.QUICK_LESSON,
+            learner_level="intermediate",
+            duration_minutes=60,
+            detail_level="standard",
+            notes_format="both",
+            generation_status=Lesson.GenerationStatus.COMPLETED,
+            generation_progress=100,
+            generation_stage="Completed",
+        )
+
+        mock_generate.return_value = lesson
+
+        response = self.client.post(
+            reverse("core:generate"),
+            self.form_data,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(
+            response,
+            reverse("core:lesson_detail", kwargs={"lesson_id": lesson.pk}),
+            fetch_redirect_response=False,
+        )
+
+        mock_generate.assert_called_once()
     def test_anonymous_user_is_redirected_from_generation_page(self):
         self.client.logout()
 

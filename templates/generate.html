@@ -301,6 +301,16 @@
                     <div class="cp-card">
 
                         <form method="post" id="generation-form">
+                            <div
+                                id="generation-submitting-message"
+                                class="alert alert-info d-none mt-3"
+                                role="status"
+                                aria-live="polite"
+                            >
+                                <span class="spinner-border spinner-border-sm me-2"
+                                    aria-hidden="true"></span>
+                                Generating your lesson. Please keep this page open...
+                            </div>
                             {% csrf_token %}
 
                             {% if form.non_field_errors %}
@@ -531,20 +541,37 @@
                                     </div>
                                 </div>
                             </div>
-
                             <!-- Actions -->
-                            <div class="d-flex flex-column flex-sm-row gap-3 mt-4">
-                                <button type="submit"
-                                        class="btn btn-primary btn-lg px-4">
-                                    Check inputs
+                            <div class="d-flex flex-column flex-sm-row gap-3 mt-4 align-items-sm-center">
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary btn-lg px-4"
+                                    data-generation-submit
+                                >
+                                    <span data-submit-label>Generate</span>
+                                    <span
+                                        class="spinner-border spinner-border-sm ms-2 d-none"
+                                        data-submit-spinner
+                                        aria-hidden="true"
+                                    ></span>
                                 </button>
-
-                                <a href="{% url 'home' %}"
-                                class="btn btn-outline-primary btn-lg px-4">
+                                <a
+                                    href="{% url 'home' %}"
+                                    class="btn btn-outline-primary btn-lg px-4"
+                                    data-generation-cancel
+                                >
                                     Cancel
                                 </a>
-                            </div>
 
+                                <span
+                                    class="small text-secondary d-none"
+                                    data-submit-status
+                                    role="status"
+                                    aria-live="polite"
+                                >
+                                    Generating, please wait...
+                                </span>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -595,83 +622,142 @@
         const modeGroups = document.querySelectorAll("[data-mode]");
 
 (() => {
-    const panel = document.getElementById("generation-progress");
-    if (!panel) return;
+        const generationForm = document.getElementById("generation-form");
+        const submittingMessage = document.getElementById(
+            "generation-submitting-message"
+        );
+        const submitButton = generationForm?.querySelector(
+            "[data-generation-submit]"
+        );
+if (generationForm) {
+    generationForm.addEventListener("submit", function (event) {
+        if (!generationForm.checkValidity()) {
+            return;
+        }
 
-    const statusUrl = panel.dataset.statusUrl;
-    const detailUrl = panel.dataset.detailUrl;
-    const title = document.getElementById("generation-title");
-    const stage = document.getElementById("generation-stage");
-    const percent = document.getElementById("generation-percent");
-    const bar = document.getElementById("generation-progress-bar");
-    const fill = document.getElementById("generation-progress-fill");
-    const error = document.getElementById("generation-error");
-    const openLink = document.getElementById("generation-open-lesson");
+        if (generationForm.dataset.submitting === "true") {
+            event.preventDefault();
+            return;
+        }
 
-    let stopped = false;
+        generationForm.dataset.submitting = "true";
 
-    async function refreshProgress() {
-        if (stopped) return;
+        const submitButton = generationForm.querySelector(
+            "[data-generation-submit]"
+        );
+        const submitLabel = generationForm.querySelector(
+            "[data-submit-label]"
+        );
+        const submitSpinner = generationForm.querySelector(
+            "[data-submit-spinner]"
+        );
+        const submitStatus = generationForm.querySelector(
+            "[data-submit-status]"
+        );
+        const cancelLink = generationForm.querySelector(
+            "[data-generation-cancel]"
+        );
 
-        try {
-            const response = await fetch(statusUrl, {
-                headers: { "X-Requested-With": "XMLHttpRequest" },
-                credentials: "same-origin",
-                cache: "no-store",
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+
+        if (submitLabel) {
+            submitLabel.textContent = "Generating...";
+        }
+
+        submitSpinner?.classList.remove("d-none");
+        submitStatus?.classList.remove("d-none");
+
+        if (cancelLink) {
+            cancelLink.classList.add("disabled");
+            cancelLink.setAttribute("aria-disabled", "true");
+            cancelLink.addEventListener("click", function (e) {
+                e.preventDefault();
             });
-
-            if (!response.ok) {
-                throw new Error("Unable to retrieve generation status.");
-            }
-
-            const data = await response.json();
-            const value = Math.max(
-                0,
-                Math.min(100, Number(data.progress) || 0)
-            );
-
-            stage.textContent = data.stage || "Generating your lesson...";
-            percent.textContent = `${value}%`;
-            fill.style.width = `${value}%`;
-            bar.setAttribute("aria-valuenow", String(value));
-
-            if (data.status === "completed") {
-                stopped = true;
-                title.textContent = "Your lesson is ready";
-                stage.textContent = "Generation completed successfully.";
-                fill.classList.remove(
-                    "progress-bar-animated",
-                    "progress-bar-striped"
-                );
-                openLink.classList.remove("d-none");
-                openLink.href = detailUrl;
-                openLink.textContent = "Open generated lesson";
-                window.location.assign(detailUrl);
-                return;
-            }
-
-            if (data.status === "failed") {
-                stopped = true;
-                title.textContent = "Generation could not be completed";
-                error.textContent = data.error || "Please try again.";
-                error.classList.remove("d-none");
-                fill.classList.remove(
-                    "progress-bar-animated",
-                    "progress-bar-striped"
-                );
-                return;
-            }
-        } catch (err) {
-            stage.textContent =
-                "Connection interrupted. Retrying status check...";
         }
 
-        if (!stopped) {
-            window.setTimeout(refreshProgress, 2000);
-        }
-    }
+        submittingMessage?.classList.add("d-none");
+    });
+}
 
-    refreshProgress();
+//     const panel = document.getElementById("generation-progress");
+//     if (!panel) return;
+
+//     const statusUrl = panel.dataset.statusUrl;
+//     const detailUrl = panel.dataset.detailUrl;
+//     const title = document.getElementById("generation-title");
+//     const stage = document.getElementById("generation-stage");
+//     const percent = document.getElementById("generation-percent");
+//     const bar = document.getElementById("generation-progress-bar");
+//     const fill = document.getElementById("generation-progress-fill");
+//     const error = document.getElementById("generation-error");
+//     const openLink = document.getElementById("generation-open-lesson");
+
+//     let stopped = false;
+
+//     async function refreshProgress() {
+//         if (stopped) return;
+
+//         try {
+//             const response = await fetch(statusUrl, {
+//                 headers: { "X-Requested-With": "XMLHttpRequest" },
+//                 credentials: "same-origin",
+//                 cache: "no-store",
+//             });
+
+//             if (!response.ok) {
+//                 throw new Error("Unable to retrieve generation status.");
+//             }
+
+//             const data = await response.json();
+//             const value = Math.max(
+//                 0,
+//                 Math.min(100, Number(data.progress) || 0)
+//             );
+
+//             stage.textContent = data.stage || "Generating your lesson...";
+//             percent.textContent = `${value}%`;
+//             fill.style.width = `${value}%`;
+//             bar.setAttribute("aria-valuenow", String(value));
+
+//             if (data.status === "completed") {
+//                 stopped = true;
+//                 title.textContent = "Your lesson is ready";
+//                 stage.textContent = "Generation completed successfully.";
+//                 fill.classList.remove(
+//                     "progress-bar-animated",
+//                     "progress-bar-striped"
+//                 );
+//                 openLink.classList.remove("d-none");
+//                 openLink.href = detailUrl;
+//                 openLink.textContent = "Open generated lesson";
+//                 window.location.assign(detailUrl);
+//                 return;
+//             }
+
+//             if (data.status === "failed") {
+//                 stopped = true;
+//                 title.textContent = "Generation could not be completed";
+//                 error.textContent = data.error || "Please try again.";
+//                 error.classList.remove("d-none");
+//                 fill.classList.remove(
+//                     "progress-bar-animated",
+//                     "progress-bar-striped"
+//                 );
+//                 return;
+//             }
+//         } catch (err) {
+//             stage.textContent =
+//                 "Connection interrupted. Retrying status check...";
+//         }
+
+//         if (!stopped) {
+//             window.setTimeout(refreshProgress, 2000);
+//         }
+//     }
+
+//     refreshProgress();
 })();
 
 

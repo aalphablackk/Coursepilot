@@ -326,18 +326,21 @@
                                         </p>
                                     </div>
 
-                                    <span class="badge rounded-pill
-                                        {% if session.status == 'approved' %}
-                                            text-bg-success
-                                        {% elif session.status == 'ready_for_review' %}
-                                            text-bg-primary
-                                        {% elif session.status == 'generating' %}
-                                            text-bg-info
-                                        {% elif session.status == 'failed' %}
-                                            text-bg-danger
-                                        {% else %}
-                                            text-bg-secondary
-                                        {% endif %}">
+                                    <span
+                                        data-session-status
+                                        class="badge rounded-pill
+                                            {% if session.status == 'approved' %}
+                                                text-bg-success
+                                            {% elif session.status == 'ready_for_review' %}
+                                                text-bg-primary
+                                            {% elif session.status == 'generating' %}
+                                                text-bg-info
+                                            {% elif session.status == 'failed' %}
+                                                text-bg-danger
+                                            {% else %}
+                                                text-bg-secondary
+                                            {% endif %}"
+                                    >
                                         {{ session.get_status_display }}
                                     </span>
                                 </div>
@@ -371,21 +374,34 @@
                                             align-items-center gap-2 mt-3">
 
                                     {% if session.status == "planned" or session.status == "failed" %}
-                                        <form method="post"
-                                              action="{% url 'core:generate_course_session' course_id=course.id outline_item_id=session.id %}">
-                                            {% csrf_token %}
+                                        <form
+    method="post"
+    action="{% url 'core:generate_course_session' course_id=course.id outline_item_id=session.id %}"
+    data-session-generation
+    data-session-number="{{ session.session_number }}"
+>
+    {% csrf_token %}
 
-                                            <button type="submit"
-                                                    class="btn btn-primary btn-sm">
-                                                {% if session.status == "failed" %}
-                                                    Retry session
-                                                {% else %}
-                                                    <icon name="play" />
-                                                    Generate session
-                                                {% endif %}
-                                                {{ session.session_number }}
-                                            </button>
-                                        </form>
+    <button
+        type="submit"
+        class="btn btn-primary btn-sm"
+        data-session-submit
+    >
+        <span data-button-label>
+            {% if session.status == "failed" %}
+                Retry session {{ session.session_number }}
+            {% else %}
+                Generate session {{ session.session_number }}
+            {% endif %}
+        </span>
+
+        <span
+            data-button-spinner
+            class="spinner-border spinner-border-sm ms-2 d-none"
+            aria-hidden="true"
+        ></span>
+    </button>
+</form>
 
                                     {% elif session.status == "generating" %}
                                         <button type="button"
@@ -440,4 +456,114 @@
     {% endif %}
 
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-session-generation]").forEach(
+        function (form) {
+            form.addEventListener("submit", async function (event) {
+                event.preventDefault();
+
+                if (form.dataset.submitting === "true") {
+                    return;
+                }
+
+                const button = form.querySelector(
+                    "[data-session-submit]"
+                );
+                const label = form.querySelector(
+                    "[data-button-label]"
+                );
+                const spinner = form.querySelector(
+                    "[data-button-spinner]"
+                );
+
+                const originalLabel = label.innerHTML;
+
+                form.dataset.submitting = "true";
+                button.disabled = true;
+                label.textContent = "Generating...";
+                spinner.classList.remove("d-none");
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: "POST",
+                        body: new FormData(form),
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest",
+                            "Accept": "application/json",
+                        },
+                        credentials: "same-origin",
+                    });
+
+                    let data;
+
+                    try {
+                        data = await response.json();
+                    } catch {
+                        throw new Error(
+                            "The server returned an unexpected response. Please try again."
+                        );
+                    }
+
+                    if (!response.ok || !data.success) {
+                        throw new Error(
+                            data.message || "Session generation failed."
+                        );
+                    }
+                    if (!response.ok || !data.success) {
+                        throw new Error(
+                            data.message || "Session generation failed."
+                        );
+                    }
+
+                    const card = form.closest(".course-session-item");
+                    const statusBadge = card?.querySelector(
+                        "[data-session-status]"
+                    );
+
+                    if (statusBadge) {
+                        statusBadge.className =
+                            "badge rounded-pill text-bg-primary";
+                        statusBadge.textContent = "Ready for review";
+                    }
+
+                    const reviewLink = document.createElement("a");
+                    reviewLink.href = data.lesson_url;
+                    reviewLink.className =
+                        "btn btn-outline-primary btn-sm";
+                    reviewLink.textContent =
+                        `Review session ${form.dataset.sessionNumber}`;
+
+                    form.replaceWith(reviewLink);
+
+                    // Update the page without navigating away.
+                    button.disabled = true;
+
+                } catch (error) {
+                    form.dataset.submitting = "false";
+                    button.disabled = false;
+                    label.innerHTML = originalLabel;
+                    spinner.classList.add("d-none");
+
+                    let alert = form.parentElement.querySelector(
+                        "[data-ajax-session-error]"
+                    );
+
+                    if (!alert) {
+                        alert = document.createElement("div");
+                        alert.dataset.ajaxSessionError = "true";
+                        alert.className =
+                            "alert alert-danger py-2 px-3 small mt-2";
+                        alert.setAttribute("role", "alert");
+                        form.insertAdjacentElement("afterend", alert);
+                    }
+
+                    alert.textContent =
+                        error.message || "Something went wrong. Please try again.";
+                }
+            });
+        }
+    );
+});
+</script>
 {% endblock %}
