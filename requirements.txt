@@ -9,14 +9,14 @@ django-cloudinary-storage==0.3.0
 django-crispy-forms==2.7
 gunicorn==26.2.0
 idna==3.20
-mysqlclient==2.3.0
+# mysqlclient==2.3.0
 pillow==12.3.0
 psycopg==3.3.6
 psycopg-binary==3.3.6
 python-decouple==3.8
 requests==2.34.2
 six==1.17.0
-sqlparse==0.6.0
+# sqlparse==0.6.0
 typing_extensions==4.16.0
 tzdata==2026.5
 urllib3==2.8.0

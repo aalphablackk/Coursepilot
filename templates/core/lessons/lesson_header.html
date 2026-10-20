@@ -1,32 +1,29 @@
+
 <header class="lesson-header mb-4">
-
-    <!-- Lesson metadata -->
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-
         <span class="badge text-bg-primary">
             {{ lesson.get_generation_mode_display }}
         </span>
 
-        <span class="badge text-bg-light border text-dark">
-            {{ lesson.get_learner_level_display }}
-        </span>
-
-        <span class="badge text-bg-light border text-dark">
-            {{ lesson.get_detail_level_display }}
-        </span>
-
-        {% if lesson.course and lesson.outline_item %}
+        {% if not is_public %}
             <span class="badge text-bg-light border text-dark">
-                Week {{ lesson.outline_item.week_number }}
-                · Session {{ lesson.outline_item.session_number }}
+                {{ lesson.get_learner_level_display }}
             </span>
-        {% endif %}
 
+            <span class="badge text-bg-light border text-dark">
+                {{ lesson.get_detail_level_display }}
+            </span>
+
+            {% if lesson.course and lesson.outline_item %}
+                <span class="badge text-bg-light border text-dark">
+                    Week {{ lesson.outline_item.week_number }}
+                    · Session {{ lesson.outline_item.session_number }}
+                </span>
+            {% endif %}
+        {% endif %}
     </div>
 
-    <!-- Title and topic -->
     <div class="mb-3">
-
         <h1 class="display-6 fw-bold mb-2">
             {{ lesson.title }}
         </h1>
@@ -36,29 +33,26 @@
                 {{ lesson.topic }}
             </p>
         {% endif %}
-
     </div>
 
-    <!-- Lesson details -->
-    <div class="d-flex flex-wrap align-items-center gap-3 text-body-secondary small">
-
-        <span class="d-inline-flex align-items-center">
-            <i class="bi bi-clock me-2" aria-hidden="true"></i>
-            {{ lesson.duration_minutes }} minutes
-        </span>
-
-        <span class="d-inline-flex align-items-center">
-            <i class="bi bi-journal-text me-2" aria-hidden="true"></i>
-            {{ lesson.get_notes_format_display }}
-        </span>
-
-        {% if lesson.course %}
+    {% if not is_public %}
+        <div class="d-flex flex-wrap align-items-center gap-3 text-body-secondary small">
             <span class="d-inline-flex align-items-center">
-                <i class="bi bi-collection me-2" aria-hidden="true"></i>
-                {{ lesson.course.title }}
+                <i class="bi bi-clock me-2" aria-hidden="true"></i>
+                {{ lesson.duration_minutes }} minutes
             </span>
-        {% endif %}
 
-    </div>
+            <span class="d-inline-flex align-items-center">
+                <i class="bi bi-journal-text me-2" aria-hidden="true"></i>
+                {{ lesson.get_notes_format_display }}
+            </span>
 
+            {% if lesson.course %}
+                <span class="d-inline-flex align-items-center">
+                    <i class="bi bi-collection me-2" aria-hidden="true"></i>
+                    {{ lesson.course.title }}
+                </span>
+            {% endif %}
+        </div>
+    {% endif %}
 </header>

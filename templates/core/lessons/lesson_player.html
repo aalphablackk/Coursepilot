@@ -150,7 +150,7 @@
 
 </div>
 
-{% if lesson.teaching_notes %}
+{% if lesson.teaching_notes and not is_public %}
     <details class="card mt-4">
         <summary class="card-header fw-semibold">
             Instructor teaching notes

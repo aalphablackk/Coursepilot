@@ -24,6 +24,5 @@ db.sqlite3
 ai_providerscore.zip
 .idea/
 runserver.bat
-course.zip
-course_review_latest.zip
-latest.zip
+
+zip

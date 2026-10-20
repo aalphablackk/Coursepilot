@@ -310,13 +310,17 @@
                 We'll help you turn it into structured learning content.
             </p>
 
-            <button class="btn btn-primary btn-lg px-4" disabled>
-                Lesson creation coming next
-            </button>
+            <a href="{% url 'core:generate' %}?mode=quick_lesson"
+                   class="btn btn-primary btn-lg px-4">
+                    Start creating
+                </a>
 
-            <p class="small text-secondary mt-3 mb-0">
-                Generation workflows are still being built.
-            </p>
+                <p class="small text-secondary mt-3 mb-0">
+                    Already created lessons?
+                    <a href="{% url 'core:library' %}">
+                        Visit your library
+                    </a>
+                </p>
         </div>
     </div>
 </section>

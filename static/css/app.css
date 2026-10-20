@@ -973,3 +973,695 @@ textarea.form-control {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* =========================================================
+   COURSEPILOT — REFINEMENT LAYER
+   Safe visual improvements; existing page selectors remain intact.
+   ========================================================= */
+
+:root {
+    --cp-primary-rgb: 53, 99, 233;
+    --cp-navy-rgb: 23, 43, 77;
+    --cp-focus-ring: 0 0 0 0.22rem rgba(var(--cp-primary-rgb), 0.18);
+    --cp-shadow-card: 0 10px 30px rgba(var(--cp-navy-rgb), 0.055);
+    --cp-shadow-card-hover: 0 16px 36px rgba(var(--cp-navy-rgb), 0.11);
+    --cp-surface-hover: #f8faff;
+    --cp-danger-soft: #fff1f2;
+}
+
+[id] {
+    scroll-margin-top: 5.5rem;
+}
+
+body {
+    background: linear-gradient(180deg, #fbfcff 0, var(--cp-bg) 22rem, var(--cp-bg) 100%);
+}
+
+img,
+svg {
+    max-width: 100%;
+}
+
+hr {
+    border-color: var(--cp-border);
+    opacity: 1;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    text-wrap: balance;
+}
+
+p,
+li {
+    text-wrap: pretty;
+}
+
+:focus-visible {
+    outline: 3px solid rgba(var(--cp-primary-rgb), 0.34);
+    outline-offset: 3px;
+}
+
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible,
+.nav-link:focus-visible,
+.dropdown-item:focus-visible {
+    outline: none;
+    box-shadow: var(--cp-focus-ring);
+}
+
+.btn {
+    min-height: 42px;
+    letter-spacing: -0.005em;
+}
+
+.btn-sm {
+    min-height: 34px;
+}
+
+.btn:not(:disabled):not(.disabled):hover {
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    box-shadow: 0 6px 16px rgba(var(--cp-primary-rgb), 0.16);
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+    box-shadow: 0 8px 20px rgba(var(--cp-primary-rgb), 0.23);
+}
+
+.btn-outline-primary {
+    background: var(--cp-surface);
+}
+
+.cp-card,
+.cp-surface,
+.course-stat-card,
+.course-progress-card,
+.course-week-card,
+.course-player-card {
+    box-shadow: var(--cp-shadow-card);
+}
+
+.cp-card {
+    border-color: rgba(227, 233, 242, 0.92);
+}
+
+.cp-card-hover:hover,
+.course-stat-card:hover,
+.course-week-card:hover {
+    box-shadow: var(--cp-shadow-card-hover);
+}
+
+.cp-card-title {
+    letter-spacing: -0.02em;
+}
+
+.cp-section:first-child {
+    padding-top: clamp(3.5rem, 8vw, 6.5rem);
+}
+
+.cp-section-sm {
+    padding-block: clamp(2.75rem, 5vw, 5rem);
+}
+
+.cp-page-header {
+    max-width: 760px;
+}
+
+.cp-page-title {
+    font-size: clamp(1.85rem, 3.2vw, 2.7rem);
+    letter-spacing: -0.04em;
+}
+
+.cp-page-description {
+    line-height: 1.75;
+}
+
+.cp-badge {
+    border: 1px solid rgba(var(--cp-primary-rgb), 0.14);
+    letter-spacing: 0.025em;
+    line-height: 1.2;
+}
+
+.cp-brand-mark {
+    box-shadow: 0 5px 12px rgba(var(--cp-primary-rgb), 0.2);
+}
+
+.cp-navbar {
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom-color: rgba(227, 233, 242, 0.9);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+}
+
+.cp-navbar .cp-brand {
+    color: var(--cp-heading);
+}
+
+.cp-navbar .nav-link {
+    border: 1px solid transparent;
+}
+
+.cp-navbar .nav-link:hover,
+.cp-navbar .nav-link:focus-visible,
+.cp-navbar .nav-link.active {
+    background: var(--cp-primary-soft);
+}
+
+.cp-navbar .dropdown-menu {
+    border-color: var(--cp-border);
+}
+
+.form-control,
+.form-select {
+    background-color: var(--cp-surface);
+    transition: border-color var(--cp-transition), box-shadow var(--cp-transition), background-color var(--cp-transition);
+}
+
+.form-control:hover,
+.form-select:hover {
+    border-color: #cbd7e8;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--cp-accent);
+    background-color: var(--cp-surface);
+    box-shadow: var(--cp-focus-ring);
+}
+
+.form-check-input {
+    border-color: #cbd5e1;
+}
+
+.form-check-input:checked {
+    background-color: var(--cp-primary);
+    border-color: var(--cp-primary);
+}
+
+.course-player .lesson-rich-text {
+    color: var(--cp-text);
+    font-size: clamp(1rem, 1.2vw, 1.08rem);
+    line-height: 1.9;
+}
+
+.course-player .lesson-rich-text h2,
+.course-player .lesson-rich-text h3,
+.course-player .lesson-rich-text h4 {
+    margin-top: 1.75em;
+    margin-bottom: 0.7em;
+}
+
+.course-player .lesson-rich-text p,
+.course-player .lesson-rich-text ul,
+.course-player .lesson-rich-text ol {
+    margin-bottom: 1.1em;
+}
+
+.course-player-card {
+    overflow: hidden;
+    border-color: var(--cp-border);
+}
+
+.lesson-sidebar-card {
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-md);
+    box-shadow: var(--cp-shadow-card);
+}
+
+.lesson-sidebar-scroll {
+    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-width: thin;
+}
+
+.lesson-sidebar-scroll::-webkit-scrollbar {
+    width: 7px;
+}
+
+.lesson-sidebar-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #cbd5e1;
+}
+
+.lesson-sidebar-nav .nav-link {
+    border: 1px solid transparent;
+}
+
+.lesson-sidebar-nav .nav-link.active {
+    border-color: rgba(var(--cp-primary-rgb), 0.14);
+}
+
+.question-option {
+    border: 1px solid var(--cp-border) !important;
+    border-radius: var(--cp-radius-sm);
+}
+
+.question-option:hover,
+.question-option:focus-within {
+    border-color: var(--cp-primary) !important;
+    box-shadow: 0 4px 14px rgba(var(--cp-primary-rgb), 0.09);
+}
+
+.question-option:has(input:checked) {
+    box-shadow: 0 4px 14px rgba(var(--cp-primary-rgb), 0.1);
+}
+
+.question-option input {
+    accent-color: var(--cp-primary);
+}
+
+.course-stat-card,
+.course-progress-card,
+.course-week-card {
+    border-color: var(--cp-border);
+    transition: box-shadow var(--cp-transition), transform var(--cp-transition), border-color var(--cp-transition);
+}
+
+.course-stat-card:hover,
+.course-week-card:hover {
+    border-color: #cbd7ff;
+    transform: translateY(-2px);
+}
+
+.course-week-header {
+    background: linear-gradient(180deg, #f8faff, var(--cp-surface-muted));
+}
+
+.course-session-item {
+    transition: background-color var(--cp-transition);
+}
+
+.course-session-item:hover {
+    background: var(--cp-surface-hover);
+}
+
+.course-objectives summary {
+    border-radius: 0.4rem;
+}
+
+.course-objectives summary:focus-visible {
+    outline: 3px solid rgba(var(--cp-primary-rgb), 0.28);
+    outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+    .cp-navbar .cp-container {
+        min-height: 62px;
+    }
+
+    .cp-section:first-child {
+        padding-top: 3.25rem;
+    }
+
+    .cp-card {
+        border-radius: 12px;
+    }
+
+    .cp-page-title {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .cp-container {
+        width: min(100% - 1.5rem, var(--cp-content-width));
+    }
+
+    .btn-lg,
+    .cp-navbar .btn-lg,
+    .cp-navbar .btn-sm {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .cp-card-hover:hover,
+    .course-stat-card:hover,
+    .course-week-card:hover,
+    .btn:not(:disabled):not(.disabled):hover {
+        transform: none;
+    }
+}
+
+
+/* =========================================================
+   COURSEPILOT — FINAL VISUAL POLISH
+   Presentation-only overrides; existing functionality is unchanged.
+   ========================================================= */
+
+:root {
+    --cp-primary: #315bea;
+    --cp-primary-hover: #2447c7;
+    --cp-primary-soft: #eef3ff;
+    --cp-navy: #14213d;
+    --cp-heading: #14213d;
+    --cp-text: #344054;
+    --cp-text-muted: #667085;
+    --cp-bg: #f7f9fc;
+    --cp-surface-muted: #f3f6fb;
+    --cp-border: #e4e9f2;
+    --cp-radius-sm: 0.7rem;
+    --cp-radius-md: 1rem;
+    --cp-radius-lg: 1.35rem;
+    --cp-shadow-sm: 0 0.35rem 1rem rgba(20, 33, 61, 0.045);
+    --cp-shadow-md: 0 0.8rem 2rem rgba(20, 33, 61, 0.075);
+    --cp-shadow-lg: 0 1.5rem 3.5rem rgba(20, 33, 61, 0.11);
+}
+
+body {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 0.975rem;
+    letter-spacing: -0.006em;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(49, 91, 234, 0.045), transparent 30rem),
+        var(--cp-bg);
+}
+
+main {
+    overflow: clip;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--cp-heading);
+    letter-spacing: -0.045em;
+}
+
+h1 {
+    font-size: clamp(2.35rem, 5vw, 4.25rem);
+    line-height: 1.04;
+}
+
+h2 {
+    font-size: clamp(1.8rem, 3vw, 2.65rem);
+    line-height: 1.12;
+}
+
+h3 {
+    line-height: 1.2;
+}
+
+p,
+li {
+    line-height: 1.75;
+}
+
+.text-secondary,
+.cp-page-description,
+.cp-card-description,
+.text-muted {
+    color: var(--cp-text-muted) !important;
+}
+
+/* Give major page sections a clearer vertical rhythm. */
+.cp-section {
+    padding-block: clamp(4rem, 8vw, 7rem);
+}
+
+.cp-section-sm {
+    padding-block: clamp(3.25rem, 6vw, 5.5rem);
+}
+
+.cp-section:nth-of-type(even) {
+    background: rgba(255, 255, 255, 0.42);
+}
+
+.cp-container {
+    width: min(100% - 2.5rem, 1180px);
+}
+
+.cp-page-header {
+    margin-bottom: clamp(2rem, 4vw, 3.25rem);
+}
+
+.cp-page-description {
+    font-size: 1.02rem;
+}
+
+/* More refined badges and brand markers. */
+.cp-badge {
+    padding: 0.45rem 0.78rem;
+    background: linear-gradient(180deg, #f1f5ff, #eaf0ff);
+    color: var(--cp-primary-hover);
+    font-size: 0.7rem;
+    letter-spacing: 0.055em;
+}
+
+.cp-brand-mark {
+    width: 2.7rem;
+    height: 2.7rem;
+    border-radius: 0.9rem;
+    background: linear-gradient(145deg, #4772f2, var(--cp-primary-hover));
+    box-shadow: 0 0.65rem 1.1rem rgba(49, 91, 234, 0.22);
+}
+
+/* Cards have a more deliberate hierarchy and less visual noise. */
+.cp-card {
+    padding: clamp(1.35rem, 2.5vw, 1.8rem);
+    border-color: rgba(228, 233, 242, 0.95);
+    border-radius: var(--cp-radius-md);
+    box-shadow: var(--cp-shadow-sm);
+}
+
+.cp-card:hover {
+    border-color: #d2dcfa;
+}
+
+.cp-card-title {
+    font-size: 1.15rem;
+    line-height: 1.3;
+}
+
+.cp-card-description {
+    font-size: 0.95rem;
+}
+
+.cp-card-hover {
+    position: relative;
+    isolation: isolate;
+}
+
+.cp-card-hover::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 0.2rem;
+    border-radius: var(--cp-radius-md) var(--cp-radius-md) 0 0;
+    background: linear-gradient(90deg, var(--cp-primary), #8ca5ff);
+    opacity: 0;
+    transition: opacity var(--cp-transition);
+}
+
+.cp-card-hover:hover::before {
+    opacity: 1;
+}
+
+/* Landing-page hero: clearer visual anchor and readable copy width. */
+.cp-hero {
+    position: relative;
+    background:
+        radial-gradient(circle at 85% 10%, rgba(49, 91, 234, 0.13), transparent 27rem),
+        linear-gradient(180deg, #fbfcff 0%, #f3f6ff 100%);
+}
+
+.cp-hero .lead {
+    max-width: 43rem;
+    font-size: clamp(1.05rem, 1.7vw, 1.22rem);
+    line-height: 1.75;
+}
+
+.cp-hero .border-top {
+    border-color: rgba(20, 33, 61, 0.1) !important;
+}
+
+/* Buttons: stronger primary action and calmer secondary action. */
+.btn {
+    min-height: 44px;
+    border-radius: 0.75rem;
+    font-weight: 650;
+}
+
+.btn-lg {
+    min-height: 50px;
+    padding-inline: 1.35rem;
+}
+
+.btn-primary {
+    border-color: var(--cp-primary);
+    background: linear-gradient(135deg, #4772f2, var(--cp-primary));
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+    border-color: var(--cp-primary-hover);
+    background: linear-gradient(135deg, var(--cp-primary), var(--cp-primary-hover));
+}
+
+.btn-outline-primary {
+    border-color: #cbd6f3;
+    color: var(--cp-primary-hover);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus-visible {
+    background: var(--cp-primary-soft);
+    border-color: #9eb3f5;
+    color: var(--cp-primary-hover);
+}
+
+/* Navbar visual separation without changing its markup or behavior. */
+.cp-navbar {
+    min-height: 4.5rem;
+    background: rgba(255, 255, 255, 0.86);
+    border-bottom: 1px solid rgba(228, 233, 242, 0.9);
+    box-shadow: 0 0.3rem 1.2rem rgba(20, 33, 61, 0.04);
+    backdrop-filter: blur(16px);
+}
+
+.cp-navbar .cp-container {
+    min-height: 4.5rem;
+}
+
+.cp-navbar .nav-link {
+    margin-inline: 0.1rem;
+    border-radius: 0.65rem;
+}
+
+.cp-navbar .nav-link.active {
+    box-shadow: inset 0 0 0 1px rgba(49, 91, 234, 0.08);
+}
+
+/* Forms: calmer fields with clearer grouping. */
+.form-label {
+    margin-bottom: 0.45rem;
+    font-size: 0.9rem;
+    letter-spacing: -0.01em;
+}
+
+.form-control,
+.form-select {
+    min-height: 46px;
+    padding: 0.65rem 0.85rem;
+    border-color: #d8e0ed;
+    border-radius: 0.7rem;
+    background: #fff;
+}
+
+textarea.form-control {
+    min-height: 138px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #8ea8f7;
+    box-shadow: 0 0 0 0.24rem rgba(49, 91, 234, 0.12);
+}
+
+/* Course outline and player surfaces. */
+.course-stat-card,
+.course-progress-card,
+.course-week-card,
+.course-player-card,
+.lesson-sidebar-card {
+    border-color: var(--cp-border);
+    border-radius: var(--cp-radius-md);
+    box-shadow: var(--cp-shadow-sm);
+}
+
+.course-week-header {
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, #f7f9ff, #f1f5fb);
+}
+
+.course-session-item {
+    padding-block: 1rem;
+}
+
+.course-player .lesson-rich-text {
+    max-width: 76ch;
+    font-size: 1.04rem;
+    line-height: 1.9;
+}
+
+.course-player .lesson-rich-text blockquote {
+    margin-block: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-left: 3px solid var(--cp-primary);
+    border-radius: 0 var(--cp-radius-sm) var(--cp-radius-sm) 0;
+    background: var(--cp-primary-soft);
+}
+
+/* Quiz options should read as a clean list of choices. */
+.question-option {
+    padding: 0.85rem 1rem;
+    border-radius: 0.75rem;
+    background: var(--cp-surface) !important;
+}
+
+.question-option:hover,
+.question-option:focus-within,
+.question-option:has(input:checked) {
+    background: var(--cp-primary-soft) !important;
+}
+
+/* Footer has enough air to feel intentional. */
+.cp-footer {
+    padding-block: 2rem;
+    background: #fff;
+}
+
+/* Responsive refinements. */
+@media (max-width: 767.98px) {
+    .cp-container {
+        width: min(100% - 1.5rem, 1180px);
+    }
+
+    h1 {
+        font-size: clamp(2.25rem, 12vw, 3.2rem);
+    }
+
+    .cp-section,
+    .cp-section-sm {
+        padding-block: 3.5rem;
+    }
+
+    .cp-hero .lead {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .cp-container {
+        width: min(100% - 1.25rem, 1180px);
+    }
+
+    .cp-card {
+        padding: 1.2rem;
+    }
+
+    .btn-lg {
+        width: 100%;
+    }
+}

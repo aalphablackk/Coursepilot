@@ -7,6 +7,13 @@ from .forms import (
     LessonSectionForm,
     LessonQuestionForm,
 )
+
+
+from .section_development import (
+    SectionDevelopmentError,
+    develop_section_content,
+)
+
 import random
 from django.views.decorators.http import require_POST
 from .models import Lesson
@@ -438,6 +445,7 @@ def library(request):
     search_query = request.GET.get("q", "").strip()
     selected_status = request.GET.get("status", "").strip()
     selected_mode = request.GET.get("mode", "").strip()
+    selected_publication = request.GET.get("publication", "").strip()
 
     if search_query:
         lessons = lessons.filter(
@@ -455,12 +463,21 @@ def library(request):
     valid_modes = [
         value for value, label in Lesson.GenerationMode.choices
     ]
+    valid_publication_statuses = {
+        value for value, label in Lesson.PublicationStatus.choices
+    }
 
     if selected_status in valid_statuses:
         lessons = lessons.filter(generation_status=selected_status)
 
     if selected_mode in valid_modes:
         lessons = lessons.filter(generation_mode=selected_mode)
+
+    if selected_publication in valid_publication_statuses:
+        lessons = lessons.filter(
+            publication_status=selected_publication
+        )
+        courses = courses.filter(status=selected_publication)
 
     for course in courses:
         items = course.outline_items.all()
@@ -487,11 +504,13 @@ def library(request):
         "search_query": search_query,
         "selected_status": selected_status,
         "selected_mode": selected_mode,
+        "selected_publication": selected_publication,
         "status_choices": Lesson.GenerationStatus.choices,
         "mode_choices": Lesson.GenerationMode.choices,
     }
 
     return render(request, "library.html", context)
+
 
 
 
@@ -697,6 +716,110 @@ def lesson_detail(request, lesson_id):
         if lesson.outline_item_id:
             current_session_number = lesson.outline_item.session_number
 
+    content = lesson.presentation_content
+    if not isinstance(content, dict):
+        content = {}
+
+    mode_template = LESSON_MODE_TEMPLATES.get(
+        lesson.generation_mode,
+        LESSON_MODE_TEMPLATES[Lesson.GenerationMode.QUICK_LESSON],
+    )
+
+    public_lesson_url = ""
+
+    if (
+        lesson.publication_status == Lesson.PublicationStatus.PUBLISHED
+        and lesson.generation_status == Lesson.GenerationStatus.COMPLETED
+    ):
+        if lesson.course_id:
+            public_path = reverse(
+                "core:public_course_session",
+                kwargs={
+                    "course_slug": lesson.course.slug,
+                    "lesson_slug": lesson.slug,
+                },
+            )
+        else:
+            public_path = reverse(
+                "core:public_lesson_detail",
+                kwargs={"slug": lesson.slug},
+            )
+
+        public_lesson_url = request.build_absolute_uri(public_path)
+
+    return render(
+        request,
+        "lesson_detail.html",
+        {
+            "lesson": lesson,
+            "content": content,
+            "mode_template": mode_template,
+            "course_sessions": course_sessions,
+            "current_session_number": current_session_number,
+            "lesson_steps": build_lesson_steps(lesson, content),
+            "public_lesson_url": public_lesson_url,
+        },
+    )
+
+
+@login_required
+@require_POST
+def toggle_lesson_publication(request, lesson_id):
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id,
+        creator=request.user,
+    )
+
+    if lesson.generation_status != Lesson.GenerationStatus.COMPLETED:
+        messages.warning(
+            request,
+            "Only completed lessons can be published.",
+        )
+        return redirect("core:lesson_detail", lesson_id=lesson.id)
+
+    if (
+        lesson.publication_status
+        == Lesson.PublicationStatus.PUBLISHED
+    ):
+        lesson.publication_status = Lesson.PublicationStatus.DRAFT
+        lesson.published_at = None
+        message = "Lesson unpublished successfully."
+    else:
+        lesson.publication_status = Lesson.PublicationStatus.PUBLISHED
+        lesson.published_at = timezone.now()
+        message = "Lesson published successfully."
+
+    lesson.save(
+        update_fields=[
+            "publication_status",
+            "published_at",
+            "updated_at",
+        ]
+    )
+    # Run this after the lesson has been successfully published.
+    # Keep your existing lesson validation and save logic.
+
+    if lesson.course_id:
+        course = lesson.course
+
+        if course.status != Course.Status.PUBLISHED:
+            course.status = Course.Status.PUBLISHED
+            course.save(update_fields=["status"])
+
+        messages.success(request, message)
+    return redirect("core:lesson_detail", lesson_id=lesson.id)
+
+
+
+def public_lesson_detail(request, slug):
+    lesson = get_object_or_404(
+        Lesson,
+        slug=slug,
+        course__isnull=True,
+        publication_status=Lesson.PublicationStatus.PUBLISHED,
+        generation_status=Lesson.GenerationStatus.COMPLETED,
+    )
 
     content = lesson.presentation_content
     if not isinstance(content, dict):
@@ -709,14 +832,136 @@ def lesson_detail(request, lesson_id):
 
     return render(
         request,
-        "lesson_detail.html",
+        "core/public_lesson_detail.html",
         {
             "lesson": lesson,
             "content": content,
             "mode_template": mode_template,
-            "course_sessions": course_sessions,
-            "current_session_number": current_session_number,
             "lesson_steps": build_lesson_steps(lesson, content),
+            "is_public": True,
+        },
+    )
+
+
+def public_course_detail(request, course_slug, lesson_slug=None):
+    course = get_object_or_404(
+        Course,
+        slug=course_slug,
+        status=Course.Status.PUBLISHED,
+    )
+
+    published_sessions = list(
+        CourseOutlineItem.objects.filter(
+            course=course,
+            lesson__isnull=False,
+            lesson__publication_status=Lesson.PublicationStatus.PUBLISHED,
+            lesson__generation_status=Lesson.GenerationStatus.COMPLETED,
+        )
+        .select_related("lesson")
+        .order_by("week_number", "position", "session_number")
+    )
+
+    lesson = None
+    content = {}
+    mode_template = None
+    lesson_steps = []
+
+    if lesson_slug:
+        lesson = get_object_or_404(
+            Lesson,
+            slug=lesson_slug,
+            course=course,
+            outline_item__course=course,
+            publication_status=Lesson.PublicationStatus.PUBLISHED,
+            generation_status=Lesson.GenerationStatus.COMPLETED,
+        )
+
+        content = lesson.presentation_content
+        if not isinstance(content, dict):
+            content = {}
+
+        mode_template = LESSON_MODE_TEMPLATES.get(
+            lesson.generation_mode,
+            LESSON_MODE_TEMPLATES[Lesson.GenerationMode.QUICK_LESSON],
+        )
+
+        lesson_steps = build_lesson_steps(lesson, content)
+
+    return render(
+        request,
+        "core/public_course_detail.html",
+        {
+            "course": course,
+            "published_sessions": published_sessions,
+            "lesson": lesson,
+            "content": content,
+            "mode_template": mode_template,
+            "lesson_steps": lesson_steps,
+            "is_public": True,
+        },
+    )
+
+def public_course_detail(request, course_slug, lesson_slug=None):
+    course = get_object_or_404(
+        Course,
+        slug=course_slug,
+        status=Course.Status.PUBLISHED,
+    )
+
+    published_sessions = (
+        CourseOutlineItem.objects.filter(
+            course=course,
+            lesson__isnull=False,
+            lesson__publication_status=Lesson.PublicationStatus.PUBLISHED,
+            lesson__generation_status=Lesson.GenerationStatus.COMPLETED,
+        )
+        .select_related("lesson")
+        .order_by(
+            "week_number",
+            "position",
+            "session_number",
+        )
+    )
+
+    lesson = None
+    content = {}
+    mode_template = None
+    lesson_steps = []
+
+    if lesson_slug:
+        lesson = get_object_or_404(
+            Lesson,
+            slug=lesson_slug,
+            course=course,
+            outline_item__course=course,
+            publication_status=Lesson.PublicationStatus.PUBLISHED,
+            generation_status=Lesson.GenerationStatus.COMPLETED,
+        )
+
+        content = lesson.presentation_content
+        if not isinstance(content, dict):
+            content = {}
+
+        mode_template = LESSON_MODE_TEMPLATES.get(
+            lesson.generation_mode,
+            LESSON_MODE_TEMPLATES[
+                Lesson.GenerationMode.QUICK_LESSON
+            ],
+        )
+
+        lesson_steps = build_lesson_steps(lesson, content)
+
+    return render(
+        request,
+        "core/public_course_detail.html",
+        {
+            "course": course,
+            "published_sessions": published_sessions,
+            "lesson": lesson,
+            "content": content,
+            "mode_template": mode_template,
+            "lesson_steps": lesson_steps,
+            "is_public": True,
         },
     )
 
@@ -770,9 +1015,62 @@ def course_outline(request, course_id):
             "progress_percent": progress_percent,
         },
     )
+@login_required
+@require_POST
+def toggle_course_publication(request, course_id):
+    course = get_object_or_404(
+        Course,
+        id=course_id,
+        creator=request.user,
+    )
+
+    if course.status == Course.Status.PUBLISHED:
+        course.status = Course.Status.DRAFT
+        course.save(update_fields=["status"])
+
+        messages.success(
+            request,
+            "Course unpublished. Its public page is no longer accessible.",
+        )
+    else:
+        published_sessions = CourseOutlineItem.objects.filter(
+            course=course,
+            lesson__isnull=False,
+            lesson__publication_status=Lesson.PublicationStatus.PUBLISHED,
+            lesson__generation_status=Lesson.GenerationStatus.COMPLETED,
+        ).exists()
+
+        if not published_sessions:
+            messages.error(
+                request,
+                "Publish at least one completed lesson before publishing this course.",
+            )
+            return redirect(
+                "core:course_outline",
+                course_id=course.id,
+            )
+
+        course.status = Course.Status.PUBLISHED
+        course.save(update_fields=["status"])
+
+        messages.success(
+            request,
+            "Course published successfully.",
+        )
+
+    return redirect("core:course_outline", course_id=course.id)
 
 @login_required
 def edit_lesson(request, lesson_id):
+    import logging
+
+    from .section_development import (
+        SectionDevelopmentError,
+        develop_section_content,
+    )
+
+    logger = logging.getLogger(__name__)
+
     lesson = get_object_or_404(
         Lesson,
         id=lesson_id,
@@ -810,8 +1108,15 @@ def edit_lesson(request, lesson_id):
     section_form = LessonSectionForm()
     question_form = LessonQuestionForm()
 
+    # These values hold an AI draft for the current request only.
+    # Developing a section must not save the lesson automatically.
+    developed_section_index = None
+    developed_section_content = None
+    developed_section_heading = None
+
     if request.method == "POST":
         form_type = request.POST.get("form_type")
+
         if form_type == "move_section":
             try:
                 index = int(request.POST.get("index", ""))
@@ -845,6 +1150,80 @@ def edit_lesson(request, lesson_id):
 
             messages.success(request, "Lesson section order updated.")
             return redirect("core:edit_lesson", lesson_id=lesson.id)
+
+        elif form_type == "develop_section":
+            try:
+                index = int(request.POST.get("index", ""))
+            except (TypeError, ValueError):
+                raise Http404
+
+            if index < 0 or index >= len(sections):
+                raise Http404
+
+            # Use the current editor values so unsaved changes are included.
+            heading = request.POST.get("heading", "").strip()
+            existing_content = request.POST.get("content", "").strip()
+
+            if not heading or not existing_content:
+                messages.error(
+                    request,
+                    "Enter a section heading and some content before "
+                    "developing it further.",
+                )
+            else:
+                try:
+                    course = getattr(lesson, "course", None)
+                    learner_level = getattr(
+                        course,
+                        "learner_level",
+                        "",
+                    )
+
+                    neighboring_headings = [
+                        section.get("heading", "")
+                        for position, section in enumerate(sections)
+                        if position != index
+                        and isinstance(section, dict)
+                        and section.get("heading")
+                    ]
+
+                    developed_content = develop_section_content(
+                        heading=heading,
+                        existing_content=existing_content,
+                        lesson_title=lesson.title,
+                        lesson_topic=getattr(lesson, "topic", ""),
+                        learner_level=str(learner_level or ""),
+                        learning_notes=lesson.learning_notes or "",
+                        neighboring_headings=neighboring_headings,
+                    )
+
+                    # Keep the AI result in the form as a draft.
+                    # Do not update lesson.presentation_content here.
+                    developed_section_index = index
+                    developed_section_content = developed_content
+                    developed_section_heading = heading
+
+                    messages.success(
+                        request,
+                        "The AI draft is ready. Review it and select "
+                        "Save section when you're satisfied.",
+                    )
+
+                except SectionDevelopmentError as exc:
+                    messages.error(request, str(exc))
+
+                except Exception:
+                    logger.exception(
+                        "Unexpected error developing lesson section %s "
+                        "for lesson %s.",
+                        index,
+                        lesson.id,
+                    )
+                    messages.error(
+                        request,
+                        "Something went wrong while developing this section. "
+                        "Your saved lesson content has not been changed.",
+                    )
 
         elif form_type == "add_section":
             section_form = LessonSectionForm(request.POST)
@@ -917,7 +1296,7 @@ def edit_lesson(request, lesson_id):
 
                 messages.success(request, "Lesson details updated.")
                 return redirect("core:edit_lesson", lesson_id=lesson.id)
-        
+
         elif form_type == "delete_question":
             try:
                 index = int(request.POST.get("index", ""))
@@ -957,6 +1336,7 @@ def edit_lesson(request, lesson_id):
 
             messages.success(request, "Lesson section deleted.")
             return redirect("core:edit_lesson", lesson_id=lesson.id)
+
         elif form_type == "section":
             try:
                 index = int(request.POST.get("index", ""))
@@ -987,14 +1367,18 @@ def edit_lesson(request, lesson_id):
 
                 messages.success(request, "Lesson section updated.")
                 return redirect("core:edit_lesson", lesson_id=lesson.id)
+
         elif form_type == "move_question":
             try:
                 index = int(request.POST.get("index", ""))
             except (TypeError, ValueError):
                 raise Http404
+
             direction = request.POST.get("direction", "")
+
             if index < 0 or index >= len(questions):
                 raise Http404
+
             if direction == "up" and index > 0:
                 target_index = index - 1
             elif direction == "down" and index < len(questions) - 1:
@@ -1004,15 +1388,18 @@ def edit_lesson(request, lesson_id):
                     "core:edit_lesson",
                     lesson_id=lesson.id,
                 )
+
             questions[index], questions[target_index] = (
                 questions[target_index],
                 questions[index],
             )
+
             content["questions"] = questions
             lesson.presentation_content = content
             lesson.save(
                 update_fields=["presentation_content", "updated_at"]
             )
+
             messages.success(request, "Quiz question order updated.")
             return redirect("core:edit_lesson", lesson_id=lesson.id)
 
@@ -1062,60 +1449,87 @@ def edit_lesson(request, lesson_id):
         else:
             raise Http404
 
+    # Build section forms for BOTH GET and POST requests.
+    # This block must remain outside the POST handler.
     section_forms = []
+
     for index, section in enumerate(sections):
         if not isinstance(section, dict):
             continue
 
+        is_developed = developed_section_index == index
+
+        initial_heading = (
+            developed_section_heading
+            if is_developed
+            else section.get("heading", "")
+        )
+
+        initial_content = (
+            developed_section_content
+            if is_developed
+            else section.get("content", "")
+        )
+
+        if (
+            request.method == "POST"
+            and request.POST.get("form_type") == "section"
+            and request.POST.get("index") == str(index)
+        ):
+            form = section_form
+        else:
+            form = LessonSectionForm(
+                initial={
+                    "heading": initial_heading,
+                    "content": initial_content,
+                }
+            )
+
         section_forms.append({
             "index": index,
-            "form": (
-                section_form
-                if request.method == "POST"
-                and request.POST.get("form_type") == "section"
-                and request.POST.get("index") == str(index)
-                else LessonSectionForm(
-                    initial={
-                        "heading": section.get("heading", ""),
-                        "content": section.get("content", ""),
-                    }
-                )
-            ),
+            "form": form,
+            "is_developed": is_developed,
         })
 
+    # Build question forms for BOTH GET and POST requests.
     question_forms = []
+
     for index, question in enumerate(questions):
         if not isinstance(question, dict):
             continue
 
+        if (
+            request.method == "POST"
+            and request.POST.get("form_type") == "question"
+            and request.POST.get("index") == str(index)
+        ):
+            form = question_form
+        else:
+            options = question.get("options", [])
+            if not isinstance(options, list):
+                options = []
+
+            form = LessonQuestionForm(
+                initial={
+                    "question": question.get("question", ""),
+                    "question_type": question.get(
+                        "question_type",
+                        "multiple_choice",
+                    ),
+                    "options": "\n".join(options),
+                    "answer": question.get("answer", ""),
+                    "explanation": question.get("explanation", ""),
+                    "hint": question.get("hint", ""),
+                    "section_heading": question.get(
+                        "section_heading",
+                        "",
+                    ),
+                }
+            )
+
         question_forms.append({
             "index": index,
-            "form": (
-                question_form
-                if request.method == "POST"
-                and request.POST.get("form_type") == "question"
-                and request.POST.get("index") == str(index)
-                else LessonQuestionForm(
-                    initial={
-                        "question": question.get("question", ""),
-                        "question_type": question.get(
-                            "question_type",
-                            "multiple_choice",
-                        ),
-                        "options": "\n".join(
-                            question.get("options", [])
-                            if isinstance(question.get("options", []), list)
-                            else []
-                        ),
-                        "answer": question.get("answer", ""),
-                        "explanation": question.get("explanation", ""),
-                        "hint": question.get("hint", ""),
-                        "section_heading": question.get(
-                            "section_heading", ""
-                        ),
-                    }
-                )
-            ),
+            "form": form,
         })
 
     return render(
@@ -1128,6 +1542,7 @@ def edit_lesson(request, lesson_id):
             "question_forms": question_forms,
             "section_form": section_form,
             "question_form": question_form,
+            "developed_section_index": developed_section_index,
         },
     )
 

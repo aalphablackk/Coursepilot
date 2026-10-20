@@ -266,7 +266,6 @@ LOGOUT_REDIRECT_URL = "home"
 # ============================================================
 # PRODUCTION SECURITY
 # ============================================================
-
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
@@ -275,6 +274,8 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
 
+    # Enable only after production HTTPS is verified.
+    SECURE_HSTS_SECONDS = 0
 # AUTH_USER_MODEL = "accounts.User"
 
 TAVILY_API_KEY = config("TAVILY_API_KEY", default="")

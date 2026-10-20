@@ -6,7 +6,22 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.text import slugify
 
+def generate_unique_slug(instance, value, field_name="slug"):
+    base_slug = slugify(value) or "item"
+    slug = base_slug
+    model_class = instance.__class__
+    counter = 2
 
+    queryset = model_class.objects.all()
+
+    if instance.pk:
+        queryset = queryset.exclude(pk=instance.pk)
+
+    while queryset.filter(**{field_name: slug}).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    return slug
 
 class AIConfiguration(models.Model):
     class Provider(models.TextChoices):
@@ -110,8 +125,8 @@ class Course(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.title) or "course"
-            self.slug = f"{base_slug}-{uuid.uuid4().hex[:8]}"
+            self.slug = generate_unique_slug(self, self.title)
+
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -193,12 +208,16 @@ class Lesson(models.Model):
         PRESENTATION = "presentation", "Presentation Notes"
         CUSTOM_CONTENT = "custom_content", "Custom Content"
         FULL_COURSE = "full_course", "Full Course"
-    
+
     class GenerationStatus(models.TextChoices):
         PENDING = "pending", "Pending"
         GENERATING = "generating", "Generating"
         COMPLETED = "completed", "Completed"
-        FAILED = "failed", "Failed"   
+        FAILED = "failed", "Failed"
+
+    class PublicationStatus(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
 
     class DetailLevel(models.TextChoices):
         CONCISE = "concise", "Concise"
@@ -211,6 +230,12 @@ class Lesson(models.Model):
         BOTH = "both", "Both"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slug = models.SlugField(
+        max_length=255,
+        unique=True,
+        blank=True,
+        db_index=False,
+    )
 
     creator = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -266,7 +291,7 @@ class Lesson(models.Model):
     learning_notes = models.TextField(blank=True)
     teaching_notes = models.TextField(blank=True)
     presentation_content = models.JSONField(default=dict, blank=True)
-    
+
     generation_status = models.CharField(
         max_length=12,
         choices=GenerationStatus.choices,
@@ -293,6 +318,17 @@ class Lesson(models.Model):
     ai_provider = models.CharField(max_length=30, blank=True)
     is_saved = models.BooleanField(default=True)
 
+    publication_status = models.CharField(
+        max_length=12,
+        choices=PublicationStatus.choices,
+        default=PublicationStatus.DRAFT,
+        db_index=True,
+    )
+
+    published_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -301,3 +337,9 @@ class Lesson(models.Model):
 
     def __str__(self):
         return self.title
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            slug_source = self.title or self.topic or "lesson"
+            self.slug = generate_unique_slug(self, slug_source)
+
+        super().save(*args, **kwargs)

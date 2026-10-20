@@ -1,4 +1,5 @@
-
+from datetime import timedelta
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core import mail, signing
@@ -369,3 +370,49 @@ class AccountTests(TestCase):
         self.assertTrue(
             self.user.check_password("AnotherStrongPassword!482")
         )
+    def test_resend_verification_records_send_timestamp(self):
+        pending = self.make_pending_signup()
+
+        self.client.post(
+            reverse("accounts:resend_verification"),
+            {"email": pending.email},
+        )
+
+        pending.refresh_from_db()
+
+        self.assertIsNotNone(pending.last_verification_sent_at)
+        self.assertEqual(len(mail.outbox), 1)
+
+
+    def test_resend_verification_is_throttled_within_cooldown(self):
+        pending = self.make_pending_signup(
+            email="throttled@example.com",
+        )
+        pending.last_verification_sent_at = timezone.now()
+        pending.save(update_fields=["last_verification_sent_at"])
+
+        response = self.client.post(
+            reverse("accounts:resend_verification"),
+            {"email": pending.email},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertContains(response, "If a pending registration exists")
+
+
+    def test_resend_verification_allowed_after_cooldown(self):
+        pending = self.make_pending_signup(
+            email="eligible@example.com",
+        )
+        pending.last_verification_sent_at = (
+            timezone.now() - timedelta(seconds=61)
+        )
+        pending.save(update_fields=["last_verification_sent_at"])
+
+        self.client.post(
+            reverse("accounts:resend_verification"),
+            {"email": pending.email},
+        )
+
+        self.assertEqual(len(mail.outbox), 1)

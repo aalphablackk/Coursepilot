@@ -17,4 +17,25 @@ urlpatterns = [
     path("courses/<uuid:course_id>/delete/",views.delete_course,name="delete_course",),
     path("lessons/<uuid:lesson_id>/export/",views.export_lesson_docx,name="export_lesson_docx",),
     path("lessons/<uuid:lesson_id>/export/pptx/",views.export_lesson_pptx,name="export_lesson_pptx",),
+    path("lessons/<uuid:lesson_id>/publish/",views.toggle_lesson_publication,name="toggle_lesson_publication",),
+    path(
+    "public/lessons/<slug:slug>/",
+        views.public_lesson_detail,
+        name="public_lesson_detail",
+    ),
+    path(
+        "public/courses/<slug:course_slug>/",
+        views.public_course_detail,
+        name="public_course_detail",
+    ),
+    path(
+        "public/courses/<slug:course_slug>/<slug:lesson_slug>/",
+        views.public_course_detail,
+        name="public_course_session",
+    ),
+    path(
+        "courses/<uuid:course_id>/publication/",
+        views.toggle_course_publication,
+        name="toggle_course_publication",
+    ),
 ]

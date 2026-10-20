@@ -22,19 +22,6 @@
         </a>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show"
-                 role="alert">
-                {{ message }}
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="alert"
-                        aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
-
     <!-- Lesson details -->
     <section class="card border-0 shadow-sm mb-4">
         <div class="card-body p-4">
@@ -116,26 +103,55 @@
 
                     <form method="post">
                         {% csrf_token %}
-                        <input type="hidden" name="form_type" value="section">
+
                         <input type="hidden" name="index" value="{{ item.index }}">
 
-                        {% for field in item.form %}
-                            <div class="mb-3">
-                                <label for="{{ field.id_for_label }}"
-                                       class="form-label fw-semibold">
-                                    {{ field.label }}
-                                </label>
-                                {{ field }}
+                        <div class="mb-3">
+                            {{ item.form.heading.label_tag }}
+                            {{ item.form.heading }}
+                            {% if item.form.heading.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ item.form.heading.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
 
-                                {% for error in field.errors %}
-                                    <div class="text-danger small mt-1">{{ error }}</div>
-                                {% endfor %}
+                        <div class="mb-3">
+                            {{ item.form.content.label_tag }}
+                            {{ item.form.content }}
+                            {% if item.form.content.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ item.form.content.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <button
+                                type="submit"
+                                name="form_type"
+                                value="section"
+                                class="btn btn-primary"
+                            >
+                                Save section
+                            </button>
+
+                            <button
+                                type="submit"
+                                name="form_type"
+                                value="develop_section"
+                                class="btn btn-outline-primary"
+                            >
+                                Develop further
+                            </button>
+                        </div>
+
+                        {% if item.is_developed %}
+                            <div class="form-text mt-2">
+                                AI draft loaded into the editor. Review it, then select
+                                Save section to keep it.
                             </div>
-                        {% endfor %}
-
-                        <button type="submit" class="btn btn-primary">
-                            Save section
-                        </button>
+                        {% endif %}
                     </form>
                 </div>
 

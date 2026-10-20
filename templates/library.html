@@ -17,51 +17,70 @@
     </div>
 
     <form method="get" class="card card-body mb-4">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-5">
-                <label for="search" class="form-label">Search lessons</label>
-                <input
-                    type="search"
-                    id="search"
-                    name="q"
-                    class="form-control"
-                    placeholder="Search by title or topic"
-                    value="{{ search_query }}"
-                >
-            </div>
 
-            <div class="col-md-3">
-                <label for="status" class="form-label">Status</label>
-                <select id="status" name="status" class="form-select">
-                    <option value="">All statuses</option>
-                    {% for value, label in status_choices %}
-                        <option value="{{ value }}"
-                            {% if selected_status == value %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+<div class="row g-3 align-items-end">
+    <div class="col-md-4">
+        <label for="search" class="form-label">Search library</label>
+        <input
+            type="search"
+            id="search"
+            name="q"
+            class="form-control"
+            placeholder="Search lessons and courses"
+            value="{{ search_query }}"
+        >
+    </div>
 
-            <div class="col-md-3">
-                <label for="mode" class="form-label">Lesson type</label>
-                <select id="mode" name="mode" class="form-select">
-                    <option value="">All types</option>
-                    {% for value, label in mode_choices %}
-                        <option value="{{ value }}"
-                            {% if selected_mode == value %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+    <div class="col-md-2">
+        <label for="publication" class="form-label">
+            Publication
+        </label>
+        <select id="publication" name="publication" class="form-select">
+            <option value="">All</option>
+            <option value="draft"
+                {% if selected_publication == "draft" %}selected{% endif %}>
+                Draft
+            </option>
+            <option value="published"
+                {% if selected_publication == "published" %}selected{% endif %}>
+                Published
+            </option>
+        </select>
+    </div>
 
-            <div class="col-md-1 d-grid">
-                <button type="submit" class="btn btn-outline-primary">
-                    Go
-                </button>
-            </div>
-        </div>
+    <div class="col-md-2">
+        <label for="status" class="form-label">Generation status</label>
+        <select id="status" name="status" class="form-select">
+            <option value="">All statuses</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}"
+                    {% if selected_status == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <label for="mode" class="form-label">Lesson type</label>
+        <select id="mode" name="mode" class="form-select">
+            <option value="">All types</option>
+            {% for value, label in mode_choices %}
+                <option value="{{ value }}"
+                    {% if selected_mode == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-1 d-grid">
+        <button type="submit" class="btn btn-outline-primary">
+            Go
+        </button>
+    </div>
+</div>
+
     </form>
 
     {% if courses %}
@@ -74,6 +93,13 @@
                         <div class="card h-100">
                             <div class="card-body d-flex flex-column">
                                 <h3 class="h5">{{ course.title }}</h3>
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    {% if course.status == "published" %}
+                                        <span class="badge text-bg-success">Published</span>
+                                    {% else %}
+                                        <span class="badge text-bg-secondary">Draft</span>
+                                    {% endif %}
+                                </div>
 
                                 <p class="text-body-secondary small">
                                     {{ course.get_learner_level_display }}
@@ -203,6 +229,12 @@
                                     <span class="badge text-bg-light border">
                                         {{ lesson.get_generation_mode_display }}
                                     </span>
+
+                                    {% if lesson.publication_status == "published" %}
+                                        <span class="badge text-bg-success">Published</span>
+                                    {% else %}
+                                        <span class="badge text-bg-secondary">Draft</span>
+                                    {% endif %}
 
                                     {% if lesson.generation_status == "completed" %}
                                         <span class="badge text-bg-success">Completed</span>

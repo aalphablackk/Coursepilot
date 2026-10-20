@@ -80,7 +80,86 @@
                 {% include "core/lessons/lesson_sidebar.html" %}
             </aside>
             <main class="col-lg-9">
-                <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+                <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div>
+                <h2 class="h6 mb-1">Lesson publishing</h2>
+
+                {% if lesson.publication_status == "published" %}
+                    <span class="badge text-bg-success">Published</span>
+                    <p class="small text-body-secondary mb-0 mt-2">
+                        Anyone with the share link can view this lesson.
+                    </p>
+                {% else %}
+                    <span class="badge text-bg-secondary">Draft</span>
+                    <p class="small text-body-secondary mb-0 mt-2">
+                        This lesson is private until you publish it.
+                    </p>
+                {% endif %}
+            </div>
+
+            <form method="post"
+                  action="{% url 'core:toggle_lesson_publication' lesson_id=lesson.id %}">
+                {% csrf_token %}
+
+                {% if lesson.publication_status == "published" %}
+                    <button type="submit" class="btn btn-outline-danger">
+                        Unpublish lesson
+                    </button>
+                {% else %}
+                    <button type="submit"
+                            class="btn btn-primary"
+                            {% if lesson.generation_status != "completed" %}disabled{% endif %}>
+                        Publish lesson
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+
+        {% if lesson.publication_status == "published" %}
+            <hr>
+
+            <label for="public-lesson-url" class="form-label small fw-semibold">
+                Public lesson link
+            </label>
+
+            <div class="input-group">
+                <input type="url"
+                       id="public-lesson-url"
+                       class="form-control"
+                       value="{{ public_lesson_url }}"
+                       readonly>
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        onclick="navigator.clipboard.writeText(document.getElementById('public-lesson-url').value).then(() => { this.textContent = 'Copied!'; }).catch(() => { document.getElementById('public-lesson-url').select(); });">
+                    Copy link
+                </button>
+
+
+                {% if lesson.course %}
+                    <a href="{% url 'core:public_course_session' course_slug=lesson.course.slug lesson_slug=lesson.slug %}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-outline-secondary">
+                        Preview
+                    </a>
+                {% else %}
+                    <a href="{% url 'core:public_lesson_detail' slug=lesson.slug %}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-outline-secondary">
+                        Preview
+                    </a>
+                {% endif %}
+
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
 
                     <a href="{% url 'core:export_lesson_docx' lesson_id=lesson.id %}"
                     class="btn btn-outline-success">

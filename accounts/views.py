@@ -24,6 +24,7 @@ User = get_user_model()
 
 VERIFICATION_MAX_AGE = 60 * 60 * 24
 VERIFICATION_SALT = "accounts.pending-signup-verification"
+RESEND_COOLDOWN_SECONDS = 60
 
 
 def _send_verification_email(request, pending):
@@ -52,6 +53,14 @@ def _send_verification_email(request, pending):
         fail_silently=False,
     )
 
+def _resend_is_throttled(pending):
+    sent_at = pending.last_verification_sent_at
+
+    if sent_at is None:
+        return False
+
+    elapsed = (timezone.now() - sent_at).total_seconds()
+    return elapsed < RESEND_COOLDOWN_SECONDS
 
 def signup(request):
     if request.user.is_authenticated:
@@ -156,18 +165,26 @@ def resend_verification(request):
             ).first()
 
             if pending:
-                # Avoid issuing another email if the account is already active.
                 account_exists = User.objects.filter(
                     email__iexact=email,
                     is_active=True,
                 ).exists()
 
-                if not account_exists:
+                if (
+                    not account_exists
+                    and not _resend_is_throttled(pending)
+                ):
                     try:
                         _send_verification_email(request, pending)
                     except Exception:
-                        # Keep the public response generic.
-                        pass
+                        logger.exception(
+                            "CoursePilot resend verification email failed"
+                        )
+                    else:
+                        pending.last_verification_sent_at = timezone.now()
+                        pending.save(
+                            update_fields=["last_verification_sent_at"]
+                        )
 
         return render(
             request,
@@ -180,7 +197,6 @@ def resend_verification(request):
         "accounts/resend_verification.html",
         {"message": None},
     )
-
 
 def verify_email(request, token):
     try:

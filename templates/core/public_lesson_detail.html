@@ -1,0 +1,33 @@
+
+{% extends "base.html" %}
+
+{% block title %}{{ lesson.title }} — CoursePilot{% endblock %}
+
+{% block content %}
+<div class="container py-4 py-lg-5">
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <a href="{% url 'core:public_lesson_detail' slug=lesson.slug %}"
+           class="navbar-brand fw-semibold text-decoration-none">
+            CoursePilot
+        </a>
+
+        <span class="badge text-bg-success">
+            Published lesson
+        </span>
+    </div>
+
+    {% include "core/lessons/lesson_header.html" %}
+
+    <div class="row justify-content-center mt-4">
+        <main class="col-lg-10 col-xl-9">
+            {% include mode_template %}
+        </main>
+    </div>
+
+    <footer class="border-top mt-5 pt-3 text-body-secondary small">
+        Shared with CoursePilot.
+    </footer>
+
+</div>
+{% endblock %}

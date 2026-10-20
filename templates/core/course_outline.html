@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 {% load static %}
 
@@ -10,8 +11,8 @@
             &larr; Back to My Library
         </a>
 
-        <div class="d-flex flex-wrap justify-content-between
-                    align-items-start gap-3">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <span class="badge text-bg-light border mb-2">
                     Full Course
@@ -21,10 +22,57 @@
                     {{ course.title }}
                 </h1>
 
-                <p class="text-body-secondary mb-0">
+                <p class="text-body-secondary mb-3">
                     Review your course plan and generate each session
                     when you are ready.
                 </p>
+
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    {% if course.status == "published" %}
+                        <span class="badge text-bg-success">
+                            Publicly available
+                        </span>
+
+                        <a
+                            href="{% url 'core:public_course_detail' course_slug=course.slug %}"
+                            class="btn btn-outline-primary btn-sm"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <icon name="external-link" />
+                            View public course
+                        </a>
+                    {% else %}
+                        <span class="badge text-bg-secondary">
+                            Draft — private
+                        </span>
+                    {% endif %}
+
+                    <form
+                        method="post"
+                        action="{% url 'core:toggle_course_publication' course_id=course.id %}"
+                    >
+                        {% csrf_token %}
+
+                        {% if course.status == "published" %}
+                            <button
+                                type="submit"
+                                class="btn btn-outline-danger btn-sm"
+                            >
+                                <icon name="eye-off" />
+                                Unpublish course
+                            </button>
+                        {% else %}
+                            <button
+                                type="submit"
+                                class="btn btn-primary btn-sm"
+                            >
+                                <icon name="globe" />
+                                Publish course
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
             </div>
 
             <span class="badge rounded-pill
@@ -42,21 +90,8 @@
                 {{ course.get_outline_status_display }}
             </span>
         </div>
-    </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }}
-                        alert-dismissible fade show"
-                 role="alert">
-                {{ message }}
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="alert"
-                        aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
+    </div>
 
     <!-- Course details -->
     <div class="row g-3 mb-4">
@@ -114,15 +149,29 @@
         </div>
     </div>
 
+    <!-- Collapsible course description -->
     {% if course.description %}
         <div class="card mb-4">
             <div class="card-body">
-                <h2 class="h6 fw-semibold mb-2">
-                    About this course
-                </h2>
-                <p class="text-body-secondary mb-0">
-                    {{ course.description|linebreaksbr }}
-                </p>
+                <button
+                    class="btn btn-link text-decoration-none text-body
+                           fw-semibold p-0 w-100 d-flex
+                           justify-content-between align-items-center"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#courseDescription"
+                    aria-expanded="false"
+                    aria-controls="courseDescription"
+                >
+                    <span>About this course</span>
+                    <icon name="chevron-down" />
+                </button>
+
+                <div class="collapse mt-3" id="courseDescription">
+                    <p class="text-body-secondary mb-0">
+                        {{ course.description|linebreaksbr }}
+                    </p>
+                </div>
             </div>
         </div>
     {% endif %}
@@ -228,6 +277,7 @@
                 over your lesson materials.
             </p>
         </div>
+
         <span class="badge text-bg-light border">
             {{ total_sessions }} sessions
         </span>
@@ -321,7 +371,6 @@
                                             align-items-center gap-2 mt-3">
 
                                     {% if session.status == "planned" or session.status == "failed" %}
-
                                         <form method="post"
                                               action="{% url 'core:generate_course_session' course_id=course.id outline_item_id=session.id %}">
                                             {% csrf_token %}
@@ -339,18 +388,15 @@
                                         </form>
 
                                     {% elif session.status == "generating" %}
-
                                         <button type="button"
                                                 class="btn btn-outline-secondary btn-sm"
                                                 disabled>
-                                            <span class="spinner-border spinner-border-sm
-                                                         me-2"
+                                            <span class="spinner-border spinner-border-sm me-2"
                                                   aria-hidden="true"></span>
                                             Generating session...
                                         </button>
 
                                     {% elif session.status == "ready_for_review" or session.status == "approved" %}
-
                                         {% if session.lesson %}
                                             <a href="{% url 'core:lesson_detail' lesson_id=session.lesson.id %}"
                                                class="btn btn-outline-primary btn-sm">
@@ -361,7 +407,6 @@
                                                 Lesson record not found.
                                             </span>
                                         {% endif %}
-
                                     {% endif %}
 
                                     {% if session.status == "ready_for_review" %}

@@ -1,0 +1,129 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+    {% if lesson %}
+        {{ lesson.title }} — {{ course.title }} — CoursePilot
+    {% else %}
+        {{ course.title }} — CoursePilot
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 py-lg-5">
+
+    <!-- Public course header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <a href="{% url 'core:public_course_detail' course_slug=course.slug %}"
+           class="navbar-brand fw-semibold text-decoration-none">
+            CoursePilot
+        </a>
+
+        <span class="badge text-bg-success">
+            Published course
+        </span>
+    </div>
+
+
+    <div class="row g-4">
+
+        <!-- Published course sessions -->
+        <aside class="col-lg-4 col-xl-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-3">
+                    <h2 class="h6 fw-bold mb-3">
+                        Course sessions
+                    </h2>
+
+                    {% if published_sessions %}
+                        {% regroup published_sessions by week_number as weekly_sessions %}
+
+                        <nav class="d-grid gap-3"
+                             aria-label="Published course sessions">
+
+                            {% for week in weekly_sessions %}
+                                <section>
+                                    <h3 class="small text-body-secondary fw-semibold mb-2">
+                                        Week {{ week.grouper }}
+                                    </h3>
+
+                                    <div class="d-grid gap-2">
+                                        {% for session in week.list %}
+                                            <a href="{% url 'core:public_course_session' course_slug=course.slug lesson_slug=session.lesson.slug %}"
+                                               class="d-block rounded-3 border p-3 text-decoration-none
+                                                      {% if lesson and session.lesson.id == lesson.id %}border-primary bg-body-tertiary{% else %}text-body{% endif %}"
+                                               {% if lesson and session.lesson.id == lesson.id %}aria-current="page"{% endif %}>
+
+                                                <span class="d-block small text-body-secondary mb-1">
+                                                    Session {{ session.session_number }}
+                                                </span>
+
+                                                <span class="d-block fw-semibold">
+                                                    {{ session.title }}
+                                                </span>
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </section>
+                            {% endfor %}
+                        </nav>
+                    {% else %}
+                        <p class="small text-body-secondary mb-0">
+                            No sessions have been published yet.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </aside>
+
+        <!-- Course landing or selected session -->
+        <main class="col-lg-8 col-xl-9">
+
+            {% if lesson %}
+                <div class="mb-4">
+                    <a href="{% url 'core:public_course_detail' course_slug=course.slug %}"
+                       class="btn btn-outline-secondary btn-sm">
+                        &larr; Course overview
+                    </a>
+                </div>
+
+                {% include "core/lessons/lesson_header.html" %}
+
+                {% include mode_template %}
+
+            {% else %}
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 p-lg-5">
+                        <h2 class="h4 fw-bold mb-3">
+                            Start learning
+                        </h2>
+
+                        {% if published_sessions %}
+                            <p class="text-body-secondary">
+                                Choose a published session from the course navigation to begin.
+                            </p>
+
+                            {% with first_session=published_sessions.0 %}
+                                <a href="{% url 'core:public_course_session' course_slug=course.slug lesson_slug=first_session.lesson.slug %}"
+                                   class="btn btn-primary">
+                                    Start first available session
+                                </a>
+                            {% endwith %}
+                        {% else %}
+                            <p class="text-body-secondary mb-0">
+                                Sessions will appear here as they are published by the instructor.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+        </main>
+    </div>
+
+    <footer class="border-top mt-5 pt-3 text-body-secondary small">
+        Shared with CoursePilot.
+    </footer>
+
+</div>
+{% endblock %}

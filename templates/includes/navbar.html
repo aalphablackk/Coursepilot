@@ -46,40 +46,12 @@
                             My Library
                         </a>
                     </li>
-
-                    <!-- Create dropdown -->
-                    <li class="nav-item dropdown">
                         <a
-                            href="#"
-                            class="nav-link dropdown-toggle"
-                            id="createDropdown"
-                            role="button"
-                            data-bs-toggle="dropdown"
-                            aria-expanded="false"
+                            href="{% url 'core:generate' %}"
+                            class="nav-link{% if request.resolver_match.namespace == 'core' and request.resolver_match.url_name == 'generate' %} active{% endif %}"
                         >
                             Create
                         </a>
-
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="createDropdown">
-                            <li>
-                                <a class="dropdown-item" href="{% url 'home' %}">
-                                    <i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>
-                                    Quick Lesson
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'home' %}">
-                                    <i class="bi bi-journal-richtext me-2" aria-hidden="true"></i>
-                                    Custom Lesson
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'home' %}">
-                                    <i class="bi bi-collection me-2" aria-hidden="true"></i>
-                                    Full Course
-                                </a>
-                            </li>
-                        </ul>
                     </li>
 
                     <!-- Account dropdown -->
